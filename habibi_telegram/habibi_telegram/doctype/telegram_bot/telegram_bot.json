@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-05 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "api_token",
+  "username",
+  "column_break_main",
+  "is_default",
+  "mark_as_default",
+  "webhook_section",
+  "webhook_enabled",
+  "webhook_url",
+  "webhook_secret",
+  "column_break_webhook",
+  "set_webhook",
+  "remove_webhook",
+  "show_webhook_info"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "Токен, который выдал @BotFather",
+   "fieldname": "api_token",
+   "fieldtype": "Password",
+   "label": "API Token",
+   "reqd": 1
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Username",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Бот, от имени которого уходят уведомления, если не указан другой",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Is Default",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mark_as_default",
+   "fieldtype": "Button",
+   "label": "Mark as Default"
+  },
+  {
+   "fieldname": "webhook_section",
+   "fieldtype": "Section Break",
+   "label": "Webhook"
+  },
+  {
+   "fieldname": "webhook_enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Webhook Enabled",
+   "read_only": 1
+  },
+  {
+   "description": "Адрес, на который Telegram шлёт апдейты. Считается из host_name сайта",
+   "fieldname": "webhook_url",
+   "fieldtype": "Data",
+   "label": "Webhook URL",
+   "read_only": 1
+  },
+  {
+   "description": "Приходит в заголовке X-Telegram-Bot-Api-Secret-Token и проверяется на каждом апдейте",
+   "fieldname": "webhook_secret",
+   "fieldtype": "Password",
+   "label": "Webhook Secret",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_webhook",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "set_webhook",
+   "fieldtype": "Button",
+   "label": "Set Webhook"
+  },
+  {
+   "fieldname": "remove_webhook",
+   "fieldtype": "Button",
+   "label": "Remove Webhook"
+  },
+  {
+   "fieldname": "show_webhook_info",
+   "fieldtype": "Button",
+   "label": "Webhook Info"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Habibi Telegram",
+ "name": "Telegram Bot",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Telegram Bot Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Telegram Bot User",
+   "share": 1,
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}
