@@ -96,6 +96,23 @@ def send_file(
 
 
 @frappe.whitelist()
+def send_chat_message(chat: str, message: str, from_bot: str = None, parse_mode: str = None):
+	"""
+	Отправить сообщение в чат из интерфейса.
+
+	Права проверяем по самому чату: писать в него могут те же, кому доступна
+	запись в Telegram Chat, то есть Telegram Bot Manager и System Manager.
+	"""
+	frappe.has_permission("Telegram Chat", "write", doc=chat, throw=True)
+
+	chat_id = frappe.db.get_value("Telegram Chat", chat, "chat_id")
+	if not chat_id:
+		frappe.throw(_("Unknown chat: {0}").format(chat))
+
+	return send_message(message, parse_mode=parse_mode, chat_id=chat_id, from_bot=from_bot)
+
+
+@frappe.whitelist()
 def send_message_from_template(
 	template: str,
 	context: dict = None,
@@ -106,6 +123,8 @@ def send_message_from_template(
 	from_bot: str = None,
 ):
 	"""Отправить сообщение, собранное из Telegram Message Template."""
+	frappe.only_for(("Telegram Bot Manager", "System Manager"))
+
 	message = render_message_from_template(template, context=context, lang=lang)
 
 	return send_message(

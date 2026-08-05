@@ -22,7 +22,6 @@
   {
    "fieldname": "chat_id",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Chat ID",
    "read_only": 1,
    "reqd": 1,
@@ -51,12 +50,14 @@
   {
    "fieldname": "last_message_on",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
    "label": "Last Message On",
    "read_only": 1
   },
   {
    "fieldname": "last_message_content",
    "fieldtype": "Small Text",
+   "in_list_view": 1,
    "label": "Last Message Content",
    "read_only": 1
   },

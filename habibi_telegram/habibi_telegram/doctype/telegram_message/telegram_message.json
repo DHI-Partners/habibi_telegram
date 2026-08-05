@@ -66,6 +66,7 @@
   {
    "fieldname": "content",
    "fieldtype": "Small Text",
+   "in_list_view": 1,
    "label": "Content",
    "read_only": 1
   }

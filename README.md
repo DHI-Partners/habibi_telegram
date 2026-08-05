@@ -108,7 +108,9 @@ send_message_from_template("order-paid", context={"doc": doc}, lang="ru",
 `disable_signup`. Пароль, присланный сообщением, замазывается в базе и удаляется
 из чата.
 
-Готовые чаты видно на странице **Telegram Chat** в Desk.
+Чаты и переписка видны в обычных списках **Telegram Chat** и **Telegram Message**.
+На форме чата есть кнопка **Send Message** — отправляет в этот чат от выбранного
+бота, и кнопка **Messages** со всей историей.
 
 ## Свои обработчики
 
@@ -182,6 +184,7 @@ def ask_details(context):
 | Telegram Chat | личные чаты и группы, где есть бот |
 | Telegram Message | история входящих и исходящих |
 | Telegram Message Template | Jinja-шаблоны с переводами |
+
 
 ## Лицензия
 
