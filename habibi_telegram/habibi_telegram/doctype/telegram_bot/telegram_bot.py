@@ -9,6 +9,16 @@ from habibi_telegram.telegram_api import TelegramAPIError, TelegramBotAPI
 
 WEBHOOK_METHOD = "habibi_telegram.api.webhook"
 
+# Хосты, до которых Telegram не достучится
+LOCAL_SUFFIXES = (".localhost", ".local", ".test", ".internal")
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
+
+
+def _is_local(host: str) -> bool:
+	host = host.split(":", 1)[0].lower()
+
+	return host in LOCAL_HOSTS or host.endswith(LOCAL_SUFFIXES)
+
 
 class TelegramBot(Document):
 	def autoname(self):
@@ -56,9 +66,28 @@ class TelegramBot(Document):
 		return TelegramBotAPI(token=token, bot_name=self.name)
 
 	def get_webhook_url(self) -> str:
-		return frappe.utils.get_url(
-			f"/api/method/{WEBHOOK_METHOD}?bot={urllib.parse.quote(self.name)}"
-		)
+		"""
+		Адрес собирается из имени сайта — отдельно домен нигде не настраивается.
+
+		Имя сайта в Frappe и есть домен: nginx резолвит сайт по заголовку Host.
+		Схема всегда https: TLS терминируется на прокси, поэтому сам frappe
+		видит http и `get_url()` вернул бы неподходящий Telegram адрес. Если
+		сайт и домен всё же разошлись — переопределяется через host_name
+		в site_config.json.
+		"""
+		host = (frappe.conf.get("host_name") or frappe.local.site).rstrip("/")
+		host = host.split("://", 1)[-1]
+
+		if _is_local(host):
+			frappe.throw(
+				_(
+					"Site '{0}' is not reachable from the internet, so Telegram cannot deliver updates. "
+					"Register the webhook on the production site, or expose this one through a tunnel "
+					"and set host_name in site_config.json."
+				).format(host)
+			)
+
+		return f"https://{host}/api/method/{WEBHOOK_METHOD}?bot={urllib.parse.quote(self.name)}"
 
 	# -- кнопки формы -------------------------------------------------------
 
@@ -79,10 +108,6 @@ class TelegramBot(Document):
 		поэтому на localhost это работать не будет — нужен туннель либо прод.
 		"""
 		url = self.get_webhook_url()
-		if not url.startswith("https://"):
-			frappe.throw(
-				_("Telegram accepts HTTPS webhooks only, got: {0}. Set host_name in site config.").format(url)
-			)
 
 		secret = self.get_password("webhook_secret", raise_exception=False)
 		if not secret:
