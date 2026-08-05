@@ -27,7 +27,7 @@ def webhook(bot: str = None, **kwargs):
 	Вместо этого запрос подписан секретом, который мы отдали при setWebhook,
 	и приходит в заголовке X-Telegram-Bot-Api-Secret-Token.
 	"""
-	telegram_bot = _authenticate(bot)
+	telegram_bot = _authenticate(_bot_from_request(bot))
 	update = _parse_update()
 
 	from habibi_telegram.dispatcher import process_update
@@ -48,6 +48,20 @@ def webhook(bot: str = None, **kwargs):
 	frappe.local.response["http_status_code"] = 200
 
 	return "ok"
+
+
+def _bot_from_request(bot: str = None) -> str:
+	"""
+	Имя бота живёт в query-строке.
+
+	Читаем его напрямую из request.args, а не из аргумента метода: при
+	Content-Type: application/json frappe подменяет form_dict телом запроса,
+	и параметры из URL до обработчика не доходят. Telegram всегда шлёт JSON.
+	"""
+	if frappe.request:
+		return frappe.request.args.get("bot") or bot
+
+	return bot
 
 
 def _authenticate(bot: str) -> str:

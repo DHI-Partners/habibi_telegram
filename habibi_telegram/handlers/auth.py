@@ -120,7 +120,10 @@ def _collect_login(context):
 
 	if not user:
 		context.reply(_("You have entered invalid credentials. Please try again"))
+		# Сбрасываем и тут же задаём первый вопрос заново: иначе бот замолкает,
+		# и следующее сообщение пользователя уходит впустую
 		reset(LOGIN_DETAILS, context)
+		_collect_login(context)
 		return
 
 	_finish(context, user, _("You have successfully logged in as: {0}").format(user))
@@ -148,6 +151,7 @@ def _collect_signup(context):
 	if frappe.db.exists("User", details.email):
 		context.reply(_("A user with this email already exists. Try logging in instead."))
 		reset(SIGNUP_DETAILS, context)
+		_collect_signup(context)
 		return
 
 	user = frappe.get_doc(
