@@ -56,6 +56,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:!doc.__islocal",
    "fieldname": "mark_as_default",
    "fieldtype": "Button",
    "label": "Mark as Default"
@@ -91,16 +92,19 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:!doc.__islocal",
    "fieldname": "set_webhook",
    "fieldtype": "Button",
    "label": "Set Webhook"
   },
   {
+   "depends_on": "eval:!doc.__islocal",
    "fieldname": "remove_webhook",
    "fieldtype": "Button",
    "label": "Remove Webhook"
   },
   {
+   "depends_on": "eval:!doc.__islocal",
    "fieldname": "show_webhook_info",
    "fieldtype": "Button",
    "label": "Webhook Info"

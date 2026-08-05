@@ -107,6 +107,12 @@ class TelegramBot(Document):
 		Telegram принимает только https и только публично доступный адрес,
 		поэтому на localhost это работать не будет — нужен туннель либо прод.
 		"""
+		if self.is_new():
+			# Имя бота уезжает в адрес вебхука, а у несохранённого документа оно
+			# временное (new-telegram-bot-xxxx). Зарегистрировали бы адрес,
+			# по которому потом никого нет.
+			frappe.throw(_("Save the bot before registering its webhook"))
+
 		url = self.get_webhook_url()
 
 		secret = self.get_password("webhook_secret", raise_exception=False)
