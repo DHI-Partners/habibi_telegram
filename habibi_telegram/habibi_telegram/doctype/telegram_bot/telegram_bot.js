@@ -1,5 +1,24 @@
+// Поля типа Password на каждое нажатие клавиши дёргают
+// frappe.core.doctype.user.user.test_password_strength. Для токена бота этот
+// метод падает с "TypeError: Integer exceeds 64-bit range": zxcvbn возвращает
+// число попыток подбора, которое для строки такой энтропии не влезает в int64,
+// и orjson отказывается его сериализовать. Индикатор стойкости токену не нужен,
+// поэтому просто выключаем проверку.
+function disable_password_strength_check(frm) {
+	for (const fieldname of ["api_token", "webhook_secret"]) {
+		const field = frm.get_field(fieldname);
+		field?.disable_password_checks?.();
+	}
+}
+
 frappe.ui.form.on("Telegram Bot", {
+	onload_post_render(frm) {
+		disable_password_strength_check(frm);
+	},
+
 	refresh(frm) {
+		disable_password_strength_check(frm);
+
 		if (frm.is_new()) return;
 
 		frm.dashboard.clear_headline();
