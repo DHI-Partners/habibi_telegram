@@ -80,6 +80,9 @@ def log_message(
 		telegram_account=account.name,
 		direction="Outgoing" if getattr(message, "out", False) else "Incoming",
 		sent_on=mtproto.to_system_datetime(getattr(message, "date", None)),
+		# file_id здесь не бывает: в MTProto вложение живёт только вместе со
+		# своим сообщением, и качается оно по номеру сообщения
+		media_type=media_kind(message),
 	)
 	doc.insert(ignore_permissions=True)
 
@@ -172,11 +175,61 @@ def message_content(message) -> str:
 
 	media = getattr(message, "media", None)
 	if media is not None:
+		kind = media_kind(message)
+		if kind:
+			return f"[{kind}]"
+
 		label = MEDIA_LABELS.get(type(media).__name__)
 
 		return label if label is not None else "[media]"
 
 	return ""
+
+
+def media_kind(message) -> str | None:
+	"""
+	Что за вложение: voice, photo, document…
+
+	Документом MTProto называет всё подряд — голосовое, видео, «кружок»,
+	стикер, — и различаются они только атрибутами. Названия сведены к тем же,
+	что у Bot API: история общая, и разбирать её потом должно одно и то же
+	место.
+	"""
+	media = getattr(message, "media", None)
+	if media is None:
+		return None
+
+	name = type(media).__name__
+
+	if name == "MessageMediaPhoto":
+		return "photo"
+
+	if name != "MessageMediaDocument":
+		return None
+
+	document = getattr(media, "document", None)
+	attributes = [type(a).__name__ for a in getattr(document, "attributes", None) or []]
+
+	for attribute in getattr(document, "attributes", None) or []:
+		if getattr(attribute, "voice", False):
+			return "voice"
+
+		if getattr(attribute, "round_message", False):
+			return "video_note"
+
+	if "DocumentAttributeSticker" in attributes:
+		return "sticker"
+
+	if "DocumentAttributeAnimated" in attributes:
+		return "animation"
+
+	if "DocumentAttributeVideo" in attributes:
+		return "video"
+
+	if "DocumentAttributeAudio" in attributes:
+		return "audio"
+
+	return "document"
 
 
 # -- вспомогательное ---------------------------------------------------------

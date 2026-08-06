@@ -18,6 +18,7 @@ from habibi_telegram.telegram_api import (
 	ParseMode,  # noqa: F401 — реэкспорт, им пользуются снаружи
 	TelegramBotAPI,
 )
+from habibi_telegram.utils.audio import prepare_voice
 from habibi_telegram.utils.formatting import strip_unsupported_html_tags
 
 
@@ -90,6 +91,52 @@ def send_file(
 	result = bot.send_document(
 		chat_id, document=file, filename=filename, caption=message, parse_mode=parse_mode
 	)
+	log_outgoing_message(telegram_bot=from_bot, result=result)
+
+	return result
+
+
+def send_voice(
+	audio,
+	caption: str = None,
+	parse_mode: str = None,
+	duration: int = None,
+	user: str = None,
+	telegram_user: str = None,
+	from_bot: str = None,
+	chat_id=None,
+):
+	"""
+	Отправить голосовое сообщение.
+
+	audio: содержимое записи (bytes) либо уже известный Telegram file_id.
+	Запись приводится к формату, который Telegram принимает голосовым, —
+	см. habibi_telegram.utils.audio.
+	"""
+	caption = sanitize_message_text(caption, parse_mode)
+
+	if chat_id is None:
+		chat_id = get_telegram_user_id(user=user, telegram_user=telegram_user)
+
+	from_bot = from_bot or get_default_bot()
+	bot = get_bot(from_bot)
+
+	if isinstance(audio, str):
+		result = bot.send_voice(
+			chat_id, voice=audio, caption=caption, parse_mode=parse_mode, duration=duration
+		)
+	else:
+		voice = prepare_voice(audio)
+		result = bot.send_voice(
+			chat_id,
+			voice=voice.content,
+			filename=voice.filename,
+			mime=voice.mime,
+			caption=caption,
+			parse_mode=parse_mode,
+			duration=duration or voice.duration,
+		)
+
 	log_outgoing_message(telegram_bot=from_bot, result=result)
 
 	return result

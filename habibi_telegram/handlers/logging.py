@@ -48,13 +48,17 @@ def log_incoming_message(context):
 	if existing:
 		return frappe.get_doc("Telegram Message", existing)
 
+	media = media_info(message)
+
 	doc = frappe.get_doc(
 		doctype="Telegram Message",
 		chat=context.telegram_chat.name,
 		message_id=str(message["message_id"]),
-		content=message.get("text") or message.get("caption"),
+		content=message.get("text") or message.get("caption") or media.get("label"),
 		from_user=context.telegram_user.name,
 		direction="Incoming",
+		media_type=media.get("type"),
+		media_file_id=media.get("file_id"),
 	)
 	doc.insert(ignore_permissions=True)
 
@@ -72,12 +76,15 @@ def log_outgoing_message(telegram_bot: str, result):
 	if not chat:
 		return None
 
+	media = media_info(result)
+
 	if result.get("text"):
 		content = result["text"]
 	elif result.get("document"):
 		content = "Sent file: " + (result["document"].get("file_name") or "")
 	else:
-		content = result.get("caption") or ""
+		# Пометки те же, что у записей от личного аккаунта, — история общая
+		content = result.get("caption") or media.get("label") or ""
 
 	doc = frappe.get_doc(
 		doctype="Telegram Message",
@@ -86,7 +93,39 @@ def log_outgoing_message(telegram_bot: str, result):
 		content=content,
 		from_bot=telegram_bot,
 		direction="Outgoing",
+		media_type=media.get("type"),
+		media_file_id=media.get("file_id"),
 	)
 	doc.insert(ignore_permissions=True)
 
 	return doc
+
+
+# Вложения Bot API: у каждого свой ключ в сообщении, порядок — от частного к
+# общему, потому что документом Telegram называет заодно и видео, и стикер
+BOT_MEDIA_FIELDS = (
+	"voice",
+	"photo",
+	"video_note",
+	"animation",
+	"sticker",
+	"video",
+	"audio",
+	"document",
+)
+
+
+def media_info(message: dict) -> dict:
+	"""Что за вложение и по какому file_id его потом забрать."""
+	for field in BOT_MEDIA_FIELDS:
+		value = message.get(field)
+		if not value:
+			continue
+
+		if field == "photo":
+			# Фотография приходит лесенкой размеров; нужен самый крупный
+			value = max(value, key=lambda size: size.get("file_size") or 0)
+
+		return {"type": field, "file_id": value.get("file_id"), "label": f"[{field}]"}
+
+	return {}

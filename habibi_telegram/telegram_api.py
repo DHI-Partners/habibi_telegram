@@ -159,6 +159,75 @@ class TelegramBotAPI:
 
 		return self.call("sendDocument", payload, files={"document": (name, content, mime)})
 
+	def send_voice(
+		self,
+		chat_id,
+		voice,
+		filename: str = "voice.ogg",
+		mime: str = "audio/ogg",
+		caption: str = None,
+		parse_mode: str = None,
+		duration: int = None,
+	):
+		"""
+		Голосовое сообщение — то самое, с волной и кружком, а не вложение.
+
+		Telegram признаёт голосовым только OGG/OPUS, MP3 и M4A; что угодно
+		другое приедет в чат обычным аудиофайлом. Приведение — на стороне
+		habibi_telegram.utils.audio.
+		"""
+		payload = {
+			"chat_id": chat_id,
+			"caption": caption,
+			"parse_mode": parse_mode,
+			"duration": duration,
+		}
+
+		if isinstance(voice, str):
+			payload["voice"] = voice
+			return self.call("sendVoice", payload)
+
+		content = voice.read() if hasattr(voice, "read") else voice
+
+		return self.call(
+			"sendVoice", payload, files={"voice": (os.path.basename(filename), content, mime)}
+		)
+
+	def get_file(self, file_id: str):
+		"""Где лежит файл на серверах Telegram. Ссылка живёт около часа."""
+		return self.call("getFile", {"file_id": file_id})
+
+	def download_file(self, file_id: str, max_bytes: int = None) -> tuple[bytes, str]:
+		"""
+		Скачать вложение по его file_id. Возвращает (содержимое, имя файла).
+
+		Ботам Telegram отдаёт только файлы до 20 МБ — всё, что больше, придётся
+		смотреть в самом Telegram.
+		"""
+		info = self.get_file(file_id) or {}
+		path = info.get("file_path")
+
+		if not path:
+			raise TelegramAPIError(_("Telegram did not tell where the file is"))
+
+		size = info.get("file_size") or 0
+		if max_bytes and size > max_bytes:
+			raise TelegramAPIError(
+				_("Attachment is too large: {0} MB").format(round(size / 1024 / 1024, 1))
+			)
+
+		url = f"{API_BASE}/file/bot{self.token}/{path}"
+
+		try:
+			response = requests.get(url, timeout=self.timeout)
+			response.raise_for_status()
+		except requests.RequestException as e:
+			raise TelegramAPIError(
+				_("Could not download the attachment: {0}").format(str(e))
+			) from e
+
+		return response.content, os.path.basename(path)
+
 	def edit_message_text(
 		self,
 		chat_id,

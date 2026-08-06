@@ -8,7 +8,7 @@ class TelegramMessage(Document):
 		self.update_chat_preview()
 		self.publish_to_console()
 
-	def publish_to_console(self):
+	def publish_to_console(self, attachment: dict = None):
 		"""
 		Показать сообщение в открытой консоли чатов, не дожидаясь поллинга.
 
@@ -16,12 +16,15 @@ class TelegramMessage(Document):
 		неё только тех, кому этот чат разрешено читать. Сюда попадает всё
 		записанное — и входящее с вебхука, и разобранное синхронизацией
 		аккаунта, и только что отправленное отсюда же.
+
+		attachment — скачанный файл сообщения. При вставке его ещё нет (кладут
+		следом), поэтому отправка голосового зовёт этот метод второй раз.
 		"""
 		from habibi_telegram.api import message_payload
 
 		frappe.publish_realtime(
 			"telegram_message",
-			message_payload(self),
+			message_payload(self, attachments={self.name: attachment}),
 			doctype="Telegram Chat",
 			docname=self.chat,
 			# Пока транзакция не закрыта, читатель события не найдёт сообщения

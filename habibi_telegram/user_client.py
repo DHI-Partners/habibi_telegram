@@ -13,6 +13,7 @@ Telegram помнит очередь изменений на несколько 
 date) лежит в поле sync_state — по нему же видно, докуда мы дочитали.
 """
 
+import io
 import json
 
 import frappe
@@ -518,6 +519,116 @@ def send_message(
 		frappe.throw(mtproto.describe_error(e), title=_("Telegram did not accept the message"))
 
 	return store.log_message(account, message, _entities_from([message]))[0]
+
+
+def send_voice(
+	account,
+	chat_id,
+	content: bytes,
+	caption: str = None,
+	parse_mode: str = None,
+	duration: int = None,
+	reply_to=None,
+) -> str | None:
+	"""
+	Голосовое от имени аккаунта. Возвращает имя записанного Telegram Message.
+
+	Запись приводится к тому, что Telegram принимает голосовым, — иначе она
+	приедет в чат обычным файлом (см. habibi_telegram.utils.audio).
+	"""
+	from habibi_telegram.utils.audio import prepare_voice
+
+	account = get_account(account)
+	mtproto.require_telethon()
+
+	voice = prepare_voice(content)
+	mode = mtproto.parse_mode_for_telethon(parse_mode)
+
+	async def _op(client):
+		from telethon.tl import types
+
+		entity = await _resolve(client, chat_id)
+
+		stream = io.BytesIO(voice.content)
+		# Telethon берёт имя файла у потока; без него запись уедет «unnamed»
+		stream.name = voice.filename
+
+		return await client.send_file(
+			entity,
+			stream,
+			caption=caption or None,
+			parse_mode=mode,
+			reply_to=cint(reply_to) or None,
+			mime_type=voice.mime,
+			voice_note=True,
+			# Свои атрибуты Telethon ставит выше вычисленных: длительность он
+			# сам не измерит, а без неё Telegram рисует пустую волну
+			attributes=[
+				types.DocumentAttributeAudio(
+					duration=cint(duration or voice.duration), voice=True
+				)
+			],
+		)
+
+	try:
+		message = mtproto.call(account, _op)
+	except Exception as e:
+		frappe.throw(mtproto.describe_error(e), title=_("Telegram did not accept the message"))
+
+	return store.log_message(account, message, _entities_from([message]))[0]
+
+
+def download_media(account, chat_id, message_id, max_bytes: int = None) -> frappe._dict:
+	"""
+	Забрать вложение сообщения: голосовое, фотографию, документ.
+
+	Ссылок на файлы мы не храним — да они в MTProto и не живут отдельно от
+	сообщения. Поэтому сообщение сначала перезапрашивается по своему номеру, а
+	вложение качается уже из него.
+
+	Возвращает content / filename / mime.
+	"""
+	account = get_account(account)
+	mtproto.require_telethon()
+
+	async def _op(client):
+		entity = await _resolve(client, chat_id)
+
+		messages = await client.get_messages(entity, ids=[cint(message_id)])
+		message = messages[0] if messages else None
+
+		if not message or not getattr(message, "media", None):
+			return None
+
+		media = message.file
+		size = getattr(media, "size", None) or 0
+
+		if max_bytes and size > max_bytes:
+			return frappe._dict(too_large=size)
+
+		content = await client.download_media(message, file=bytes)
+
+		return frappe._dict(
+			content=content,
+			filename=getattr(media, "name", None)
+			or f"{message_id}{getattr(media, 'ext', '') or ''}",
+			mime=getattr(media, "mime_type", None) or "application/octet-stream",
+		)
+
+	try:
+		media = mtproto.call(account, _op)
+	except Exception as e:
+		frappe.throw(mtproto.describe_error(e), title=_("Could not download the attachment"))
+
+	if not media:
+		frappe.throw(_("The message no longer exists in Telegram or has no attachment"))
+
+	if media.get("too_large"):
+		frappe.throw(
+			_("Attachment is too large: {0} MB").format(round(media.too_large / 1024 / 1024, 1))
+		)
+
+	return media
 
 
 def edit_message(account, chat_id, message_id, text: str, parse_mode: str = None) -> str | None:

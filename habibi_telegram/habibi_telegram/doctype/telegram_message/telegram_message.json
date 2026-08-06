@@ -16,6 +16,8 @@
   "sent_on",
   "content_section",
   "content",
+  "media_type",
+  "media_file_id",
   "state_section",
   "is_edited",
   "edited_on",
@@ -79,6 +81,20 @@
    "read_only": 1
   },
   {
+   "fieldname": "media_type",
+   "fieldtype": "Data",
+   "label": "Media Type",
+   "read_only": 1,
+   "description": "voice, photo, document, video… — вложение, если оно было"
+  },
+  {
+   "fieldname": "media_file_id",
+   "fieldtype": "Data",
+   "label": "Media File ID",
+   "read_only": 1,
+   "description": "Идентификатор файла в Bot API; у личных аккаунтов вложение берётся по самому сообщению"
+  },
+  {
    "fieldname": "telegram_account",
    "fieldtype": "Link",
    "label": "Telegram Account",
@@ -132,7 +148,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-05 12:00:00.000000",
+ "modified": "2026-08-06 18:40:00.000000",
  "modified_by": "Administrator",
  "module": "Habibi Telegram",
  "name": "Telegram Message",

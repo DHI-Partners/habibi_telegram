@@ -118,6 +118,23 @@ MAX_PAGE_LENGTH = 200
 # Длина превью последнего сообщения в списке диалогов
 PREVIEW_LENGTH = 120
 
+# Потолок на скачивание вложения. Больше этого боту Telegram и не отдаст, а
+# держать в переписке кино — не то, ради чего заводят консоль
+MAX_MEDIA_BYTES = 20 * 1024 * 1024
+
+# Виды вложений; названия общие для Bot API и MTProto (см. handlers.logging и
+# handlers.account)
+MEDIA_TYPES = (
+	"voice",
+	"photo",
+	"video_note",
+	"animation",
+	"sticker",
+	"video",
+	"audio",
+	"document",
+)
+
 # Подписи в выпадающем списке форматирования → parse_mode Telegram
 TEXT_FORMATS = {
 	"Plain text": None,
@@ -187,6 +204,7 @@ def get_messages(
 			"message_id",
 			"direction",
 			"content",
+			"media_type",
 			"from_user",
 			"from_bot",
 			"telegram_account",
@@ -204,12 +222,13 @@ def get_messages(
 	)
 
 	senders = _sender_names(rows)
+	attachments = _attachment_urls(rows)
 
 	# Внутри страницы показываем по времени Telegram: аккаунт может принести
 	# старую переписку разом, и creation тогда ничего не значит
 	rows.sort(key=lambda row: row.get("sent_on") or row.get("creation"))
 
-	return [message_payload(row, senders) for row in rows]
+	return [message_payload(row, senders, attachments) for row in rows]
 
 
 @frappe.whitelist(methods=["POST"])
@@ -249,14 +268,121 @@ def send_chat_message(
 	return message_payload(_sent_message(chat, result))
 
 
-def message_payload(row, sender_names: dict = None) -> dict:
+@frappe.whitelist(methods=["POST"])
+def send_voice_message(chat_id: str, duration=None, bot: str = None, account: str = None) -> dict:
+	"""
+	Отправить голосовое, записанное в консоли.
+
+	Запись приходит обычной формой (multipart), а не в JSON: гонять звук через
+	base64 — это треть объёма на ровном месте.
+
+	Браузеры пишут в разных контейнерах, и голосовым Telegram признаёт не
+	всякий; приведение — в habibi_telegram.utils.audio.
+	"""
+	from habibi_telegram.utils.audio import prepare_voice
+
+	chat = frappe.get_doc("Telegram Chat", chat_id)
+	chat.check_permission("write")
+
+	voice = prepare_voice(_uploaded_recording())
+	seconds = voice.duration or cint(duration) or None
+
+	if not bot and not account:
+		bot, account = _pick_transport(chat)
+
+	if account:
+		from habibi_telegram.user_client import send_voice as send_from_account
+
+		result = send_from_account(
+			account, chat_id=chat.chat_id, content=voice.content, duration=seconds
+		)
+	else:
+		from habibi_telegram.client import send_voice
+
+		result = send_voice(
+			voice.content, chat_id=chat.chat_id, from_bot=bot, duration=seconds
+		)
+
+	doc = _sent_message(chat, result)
+	attachment = _attach_file(doc, voice.content, voice.filename)
+
+	# Первое событие ушло при вставке — тогда файла ещё не было. Второе несёт
+	# ссылку на запись, и в чужих открытых консолях появляется проигрыватель
+	if attachment:
+		doc.publish_to_console(attachment=attachment)
+
+	return message_payload(doc, attachments={doc.get("name"): attachment})
+
+
+@frappe.whitelist(methods=["POST"])
+def download_media(message: str) -> dict:
+	"""
+	Забрать вложение сообщения к себе и вернуть обновлённое сообщение.
+
+	По требованию, а не при получении: в живой группе фотографии идут потоком,
+	и складывать их все на диск — сомнительная услуга. Уже скачанное второй раз
+	не качается.
+	"""
+	doc = frappe.get_doc("Telegram Message", message)
+	frappe.has_permission("Telegram Chat", "read", doc=doc.chat, throw=True)
+
+	attachment = _attachment_urls([{"name": doc.name}]).get(doc.name)
+
+	if not attachment:
+		media = _fetch_media(doc)
+		attachment = _attach_file(doc, media.content, media.filename)
+
+	return message_payload(doc, attachments={doc.name: attachment})
+
+
+def _fetch_media(doc) -> frappe._dict:
+	"""
+	Скачать вложение из Telegram.
+
+	Личный аккаунт качает по номеру сообщения — в MTProto вложение отдельно от
+	сообщения не живёт. Боту нужен file_id, который мы запомнили при получении;
+	у сообщений, записанных раньше, его нет, и помочь тут нечем.
+	"""
+	chat = frappe.get_doc("Telegram Chat", doc.chat)
+	account = doc.telegram_account or chat.get_account()
+
+	if account:
+		from habibi_telegram.user_client import download_media as download_from_account
+
+		return download_from_account(
+			account,
+			chat_id=chat.chat_id,
+			message_id=doc.message_id,
+			max_bytes=MAX_MEDIA_BYTES,
+		)
+
+	if doc.media_file_id:
+		from habibi_telegram.client import get_bot
+
+		bot = get_bot(doc.from_bot or (chat.bots[0].telegram_bot if chat.bots else None))
+		content, filename = bot.download_file(doc.media_file_id, max_bytes=MAX_MEDIA_BYTES)
+
+		return frappe._dict(content=content, filename=filename)
+
+	frappe.throw(
+		_(
+			"Nothing to download: this message was recorded without attachment details. "
+			"Connect a Telegram Account that sees this chat, or open the message in Telegram."
+		)
+	)
+
+
+def message_payload(row, sender_names: dict = None, attachments: dict = None) -> dict:
 	"""
 	Один формат сообщения на всех: история, ответ на отправку и realtime.
 
 	row — строка из get_list или сам документ Telegram Message; и то, и другое
-	отвечает на .get().
+	отвечает на .get(). attachments — заранее собранные ссылки на записи, по
+	имени сообщения; за ними здесь специально не ходят, чтобы не добавлять
+	запрос на каждое сообщение синхронизации.
 	"""
 	sender_names = sender_names or {}
+	attachment = (attachments or {}).get(row.get("name")) or {}
 	from_user = row.get("from_user")
 
 	sender = sender_names.get(from_user) if from_user else None
@@ -270,6 +396,11 @@ def message_payload(row, sender_names: dict = None) -> dict:
 		"direction": row.get("direction") or "Incoming",
 		"content": row.get("content") or "",
 		"sender": sender or row.get("from_bot") or row.get("telegram_account") or "",
+		# Что за вложение — и скачано ли оно уже к нам. Старые записи поля
+		# media_type не знают, для них тип виден по самой пометке в тексте
+		"media_type": row.get("media_type") or _media_type_from_content(row.get("content")),
+		"file_url": attachment.get("url"),
+		"file_name": attachment.get("name"),
 		# Что показать под пузырём: время Telegram, если оно известно
 		"timestamp": _timestamp(row.get("sent_on") or row.get("creation")),
 		# Курсор поллинга — только creation, иначе догрузка пропустит
@@ -312,6 +443,73 @@ def _sender_names(rows: list) -> dict:
 			as_list=True,
 		)
 	)
+
+
+def _attachment_urls(rows: list) -> dict:
+	"""Скачанные вложения — одним запросом на страницу истории."""
+	names = [row.get("name") for row in rows if row.get("name")]
+	if not names:
+		return {}
+
+	files = frappe.get_all(
+		"File",
+		filters={"attached_to_doctype": "Telegram Message", "attached_to_name": ("in", names)},
+		fields=["attached_to_name", "file_url", "file_name"],
+	)
+
+	return {
+		row.attached_to_name: {"url": row.file_url, "name": row.file_name} for row in files
+	}
+
+
+def _media_type_from_content(content: str) -> str | None:
+	"""
+	Тип вложения по пометке в тексте.
+
+	Для сообщений, записанных до появления поля media_type: пометку вида
+	«[voice]» ставили и тогда, а больше о вложении в истории ничего нет.
+	"""
+	label = (content or "").strip()
+
+	if len(label) > 20 or not label.startswith("[") or not label.endswith("]"):
+		return None
+
+	kind = label[1:-1]
+
+	return kind if kind in MEDIA_TYPES else None
+
+
+def _uploaded_recording() -> bytes:
+	upload = frappe.request.files.get("file") if frappe.request else None
+	if not upload:
+		frappe.throw(_("No recording in the request"))
+
+	return upload.read()
+
+
+def _attach_file(doc, content: bytes, filename: str) -> dict | None:
+	"""
+	Положить вложение файлом при сообщении.
+
+	Без этого в истории остаётся одна пометка «[voice]»: у Telegram файл
+	спрашивают по его идентификатору, наружу такую ссылку не отдать, а у
+	личного аккаунта её и вовсе нет.
+	"""
+	if not doc.get("name"):
+		return None
+
+	file = frappe.get_doc(
+		doctype="File",
+		file_name=f"{doc.get('name')}-{filename}",
+		# Переписка не для посторонних, и файлы к ней тоже
+		is_private=1,
+		content=content,
+		attached_to_doctype="Telegram Message",
+		attached_to_name=doc.get("name"),
+	)
+	file.insert(ignore_permissions=True)
+
+	return {"url": file.file_url, "name": file.file_name}
 
 
 def _parse_mode(text_format: str) -> str | None:
