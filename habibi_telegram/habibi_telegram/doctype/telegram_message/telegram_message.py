@@ -6,6 +6,28 @@ from frappe.model.document import Document
 class TelegramMessage(Document):
 	def after_insert(self):
 		self.update_chat_preview()
+		self.publish_to_console()
+
+	def publish_to_console(self):
+		"""
+		Показать сообщение в открытой консоли чатов, не дожидаясь поллинга.
+
+		Событие уходит в комнату документа Telegram Chat: socket.io пускает в
+		неё только тех, кому этот чат разрешено читать. Сюда попадает всё
+		записанное — и входящее с вебхука, и разобранное синхронизацией
+		аккаунта, и только что отправленное отсюда же.
+		"""
+		from habibi_telegram.api import message_payload
+
+		frappe.publish_realtime(
+			"telegram_message",
+			message_payload(self),
+			doctype="Telegram Chat",
+			docname=self.chat,
+			# Пока транзакция не закрыта, читатель события не найдёт сообщения
+			# в базе
+			after_commit=True,
+		)
 
 	def update_chat_preview(self):
 		frappe.db.set_value(

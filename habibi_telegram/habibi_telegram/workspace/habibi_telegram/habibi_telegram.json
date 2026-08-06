@@ -1,7 +1,7 @@
 {
  "app": "habibi_telegram",
  "charts": [],
- "content": "[{\"id\":\"telegram-heading\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Telegram</span>\",\"col\":12}},{\"id\":\"telegram-shortcut-account\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Account\",\"col\":3}},{\"id\":\"telegram-shortcut-chat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Chat\",\"col\":3}},{\"id\":\"telegram-shortcut-message\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Message\",\"col\":3}},{\"id\":\"telegram-spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"telegram-card-accounts\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounts and Bots\",\"col\":4}},{\"id\":\"telegram-card-history\",\"type\":\"card\",\"data\":{\"card_name\":\"Correspondence\",\"col\":4}}]",
+ "content": "[{\"id\":\"telegram-heading\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Telegram</span>\",\"col\":12}},{\"id\":\"telegram-shortcut-console\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Chat Console\",\"col\":3}},{\"id\":\"telegram-shortcut-account\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Account\",\"col\":3}},{\"id\":\"telegram-shortcut-chat\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Chat\",\"col\":3}},{\"id\":\"telegram-shortcut-message\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Telegram Message\",\"col\":3}},{\"id\":\"telegram-spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"telegram-card-accounts\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounts and Bots\",\"col\":4}},{\"id\":\"telegram-card-history\",\"type\":\"card\",\"data\":{\"card_name\":\"Correspondence\",\"col\":4}}]",
  "creation": "2026-08-06 12:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -66,6 +66,17 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Telegram Chat Console",
+   "link_count": 0,
+   "link_to": "telegram-chat-app",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Telegram Chat",
    "link_count": 0,
    "link_to": "Telegram Chat",
@@ -96,7 +107,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-08-06 12:00:00.000000",
+ "modified": "2026-08-06 16:20:00.000000",
  "modified_by": "Administrator",
  "module": "Habibi Telegram",
  "name": "Habibi Telegram",
@@ -109,6 +120,13 @@
  "roles": [],
  "sequence_id": 40.0,
  "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "",
+   "label": "Telegram Chat Console",
+   "link_to": "telegram-chat-app",
+   "type": "Page"
+  },
   {
    "color": "Grey",
    "doc_view": "List",

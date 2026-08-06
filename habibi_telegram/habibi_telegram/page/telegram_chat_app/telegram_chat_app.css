@@ -1,0 +1,238 @@
+/*
+ * Стили консоли чатов. Цвета берём переменными Frappe, поэтому тёмная тема
+ * работает сама собой.
+ */
+
+.telegram-console {
+	display: flex;
+	/* Высота шапки Desk с отступами страницы */
+	height: calc(100vh - 190px);
+	min-height: 420px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md);
+	background: var(--card-bg, var(--fg-color));
+	overflow: hidden;
+}
+
+/* -- левая колонка -------------------------------------------------------- */
+
+.telegram-console .tg-sidebar {
+	width: 320px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	border-right: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-search {
+	padding: 10px;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-chat-list {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.telegram-console .tg-chat {
+	display: flex;
+	gap: 10px;
+	padding: 10px 12px;
+	cursor: pointer;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-chat:hover {
+	background: var(--bg-color);
+}
+
+.telegram-console .tg-chat.active {
+	background: var(--bg-blue);
+}
+
+.telegram-console .tg-chat.active .tg-chat-title,
+.telegram-console .tg-chat.active .tg-chat-preview,
+.telegram-console .tg-chat.active .tg-chat-time {
+	color: var(--text-on-blue);
+}
+
+.telegram-console .tg-avatar {
+	width: 38px;
+	height: 38px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: var(--control-bg);
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.telegram-console .tg-chat-body {
+	min-width: 0;
+	flex: 1;
+}
+
+.telegram-console .tg-chat-top {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.telegram-console .tg-chat-title {
+	font-weight: 600;
+	color: var(--text-color);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.telegram-console .tg-chat-time,
+.telegram-console .tg-chat-preview {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-chat-time {
+	flex-shrink: 0;
+}
+
+.telegram-console .tg-chat-preview {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* -- правая колонка ------------------------------------------------------- */
+
+.telegram-console .tg-conversation {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.telegram-console .tg-header:not(:empty) {
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-header-title {
+	font-weight: 600;
+	color: var(--text-color);
+}
+
+.telegram-console .tg-header-meta {
+	display: flex;
+	gap: 12px;
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+	background: var(--bg-color);
+}
+
+.telegram-console .tg-day {
+	margin: 12px 0;
+	text-align: center;
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-load-more-wrapper {
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.telegram-console .tg-message {
+	display: flex;
+	margin-bottom: 8px;
+}
+
+.telegram-console .tg-message.tg-outgoing {
+	justify-content: flex-end;
+}
+
+.telegram-console .tg-bubble {
+	max-width: 70%;
+	padding: 8px 12px;
+	border-radius: var(--border-radius-md);
+	background: var(--fg-color);
+	border: 1px solid var(--border-color);
+	color: var(--text-color);
+}
+
+.telegram-console .tg-outgoing .tg-bubble {
+	background: var(--bg-blue);
+	border-color: transparent;
+	color: var(--text-on-blue);
+}
+
+.telegram-console .tg-bubble.tg-deleted .tg-text {
+	text-decoration: line-through;
+	opacity: 0.6;
+}
+
+.telegram-console .tg-sender {
+	font-size: var(--text-sm);
+	font-weight: 600;
+	margin-bottom: 2px;
+	opacity: 0.8;
+}
+
+.telegram-console .tg-text {
+	/* Переносы строк из Telegram — как есть, длинные ссылки не рвут пузырь */
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.telegram-console .tg-meta {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+	margin-top: 2px;
+	font-size: var(--text-xs);
+	opacity: 0.7;
+}
+
+/* -- поле ввода ----------------------------------------------------------- */
+
+.telegram-console .tg-composer:not(:empty) {
+	display: flex;
+	align-items: flex-end;
+	gap: 8px;
+	padding: 10px;
+	border-top: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-format {
+	width: 130px;
+	flex-shrink: 0;
+}
+
+.telegram-console .tg-input {
+	flex: 1;
+	resize: none;
+	max-height: 160px;
+	overflow-y: auto;
+}
+
+.telegram-console .tg-readonly {
+	padding: 12px;
+	text-align: center;
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	border-top: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-empty {
+	padding: 24px;
+	text-align: center;
+	color: var(--text-muted);
+}
