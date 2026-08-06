@@ -1,0 +1,284 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:title",
+ "creation": "2026-08-06 12:00:00.000000",
+ "description": "Личный телеграм-аккаунт: видит переписку, уведомления и служебные сообщения целиком, в отличие от бота",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "enabled",
+  "user",
+  "column_break_main",
+  "status",
+  "full_name",
+  "username",
+  "account_id",
+  "connection_section",
+  "phone",
+  "api_id",
+  "api_hash",
+  "column_break_connection",
+  "request_code",
+  "sign_in",
+  "log_out",
+  "phone_code_hash",
+  "code_requested_on",
+  "sync_section",
+  "sync_enabled",
+  "dialog_limit",
+  "history_limit",
+  "column_break_sync",
+  "last_sync_on",
+  "sync_now",
+  "fetch_dialogs",
+  "last_error",
+  "session_section",
+  "session_string",
+  "sync_state",
+  "session_cache"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "description": "Пользователь Frappe, которому принадлежит аккаунт",
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Disconnected",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Disconnected\nCode Sent\nPassword Required\nConnected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Username",
+   "read_only": 1
+  },
+  {
+   "fieldname": "account_id",
+   "fieldtype": "Data",
+   "label": "Telegram User ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "connection_section",
+   "fieldtype": "Section Break",
+   "label": "Connection"
+  },
+  {
+   "description": "В международном формате, с плюсом: +79990000000",
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "reqd": 1
+  },
+  {
+   "description": "Из приложения, заведённого на my.telegram.org",
+   "fieldname": "api_id",
+   "fieldtype": "Data",
+   "label": "API ID",
+   "reqd": 1
+  },
+  {
+   "description": "Оттуда же, где API ID",
+   "fieldname": "api_hash",
+   "fieldtype": "Password",
+   "label": "API Hash",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_connection",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && doc.status != 'Connected'",
+   "fieldname": "request_code",
+   "fieldtype": "Button",
+   "label": "Request Code"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && (doc.status == 'Code Sent' || doc.status == 'Password Required')",
+   "fieldname": "sign_in",
+   "fieldtype": "Button",
+   "label": "Sign In"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && doc.status == 'Connected'",
+   "fieldname": "log_out",
+   "fieldtype": "Button",
+   "label": "Log Out"
+  },
+  {
+   "description": "Выдаётся вместе с кодом и нужен, чтобы его подтвердить",
+   "fieldname": "phone_code_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Phone Code Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "code_requested_on",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Code Requested On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sync_section",
+   "fieldtype": "Section Break",
+   "label": "Sync"
+  },
+  {
+   "default": "1",
+   "description": "Раз в минуту забирать всё новое: сообщения, правки, удаления",
+   "fieldname": "sync_enabled",
+   "fieldtype": "Check",
+   "label": "Sync Enabled"
+  },
+  {
+   "default": "50",
+   "description": "Сколько диалогов разбирать при первом заходе и после разрыва состояния",
+   "fieldname": "dialog_limit",
+   "fieldtype": "Int",
+   "label": "Dialogs to Scan"
+  },
+  {
+   "default": "20",
+   "description": "Сколько последних сообщений брать из каждого диалога",
+   "fieldname": "history_limit",
+   "fieldtype": "Int",
+   "label": "Messages per Dialog"
+  },
+  {
+   "fieldname": "column_break_sync",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_sync_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Sync On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && doc.status == 'Connected'",
+   "fieldname": "sync_now",
+   "fieldtype": "Button",
+   "label": "Sync Now"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal && doc.status == 'Connected'",
+   "fieldname": "fetch_dialogs",
+   "fieldtype": "Button",
+   "label": "Refresh Dialogs"
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "description": "Служебное. Ключ авторизации лежит в хранилище паролей, здесь только заглушка",
+   "fieldname": "session_section",
+   "fieldtype": "Section Break",
+   "label": "Session"
+  },
+  {
+   "fieldname": "session_string",
+   "fieldtype": "Password",
+   "label": "Session",
+   "read_only": 1
+  },
+  {
+   "description": "Докуда дочитана очередь апдейтов: pts / qts / date / seq",
+   "fieldname": "sync_state",
+   "fieldtype": "Code",
+   "label": "Sync State",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "description": "Кэш известных аккаунту людей, групп и каналов. Без него нельзя ни писать, ни читать историю",
+   "fieldname": "session_cache",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Session Cache",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-06 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Habibi Telegram",
+ "name": "Telegram Account",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Telegram Bot Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 0
+}

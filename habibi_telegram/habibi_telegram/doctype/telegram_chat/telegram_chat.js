@@ -13,6 +13,10 @@ frappe.ui.form.on("Telegram Chat", {
 
 function send_message_dialog(frm) {
 	const bots = (frm.doc.bots || []).map((row) => row.telegram_bot);
+	const accounts = (frm.doc.accounts || []).map((row) => row.telegram_account);
+
+	// В чат, где бота нет, писать можно только личным аккаунтом — и наоборот
+	const send_as = bots.length || !accounts.length ? "Bot" : "Account";
 
 	const dialog = new frappe.ui.Dialog({
 		title: __("Send Message to {0}", [frm.doc.title]),
@@ -36,16 +40,43 @@ function send_message_dialog(frm) {
 				default: "",
 			},
 			{
+				fieldname: "send_as",
+				label: __("Send As"),
+				fieldtype: "Select",
+				options: [
+					{ value: "Bot", label: __("Bot") },
+					{ value: "Account", label: __("Personal account") },
+				],
+				default: send_as,
+			},
+			{
 				fieldname: "from_bot",
-				label: __("Send From"),
+				label: __("Bot"),
 				fieldtype: "Link",
 				options: "Telegram Bot",
 				default: bots[0],
+				depends_on: "eval:doc.send_as == 'Bot'",
 				description: __("Leave empty to use the default bot"),
+			},
+			{
+				fieldname: "from_account",
+				label: __("Account"),
+				fieldtype: "Link",
+				options: "Telegram Account",
+				default: accounts[0],
+				depends_on: "eval:doc.send_as == 'Account'",
+				get_query: () => ({ filters: { status: "Connected", enabled: 1 } }),
 			},
 		],
 		primary_action_label: __("Send"),
 		primary_action(values) {
+			const as_account = values.send_as === "Account";
+
+			if (as_account && !values.from_account) {
+				frappe.msgprint(__("Choose the account to send from"));
+				return;
+			}
+
 			dialog.disable_primary_action();
 
 			frappe
@@ -55,8 +86,10 @@ function send_message_dialog(frm) {
 						chat: frm.doc.name,
 						message: values.message,
 						parse_mode: values.parse_mode || null,
-						from_bot: values.from_bot || null,
+						from_bot: as_account ? null : values.from_bot || null,
+						from_account: as_account ? values.from_account : null,
 					},
+					freeze: true,
 				})
 				.then(() => {
 					dialog.hide();

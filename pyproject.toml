@@ -8,8 +8,14 @@ requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # Никаких внешних зависимостей: Telegram Bot API — это обычный HTTPS+JSON,
-    # requests приходит вместе с frappe.
+    # Bot API — обычный HTTPS+JSON, для него ничего не нужно: requests приходит
+    # вместе с frappe.
+    #
+    # А вот личный аккаунт живёт на MTProto: свой бинарный протокол со своей
+    # криптографией, руками его не написать. Telethon — единственная зрелая
+    # реализация на чистом Python; импортируется лениво, так что без него
+    # работает всё, кроме раздела Telegram Account.
+    "telethon>=1.36,<2",
 ]
 
 [build-system]

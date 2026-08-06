@@ -12,8 +12,16 @@
   "column_break_main",
   "from_user",
   "from_bot",
+  "telegram_account",
+  "sent_on",
   "content_section",
-  "content"
+  "content",
+  "state_section",
+  "is_edited",
+  "edited_on",
+  "column_break_state",
+  "is_deleted",
+  "deleted_on"
  ],
  "fields": [
   {
@@ -69,6 +77,57 @@
    "in_list_view": 1,
    "label": "Content",
    "read_only": 1
+  },
+  {
+   "fieldname": "telegram_account",
+   "fieldtype": "Link",
+   "label": "Telegram Account",
+   "options": "Telegram Account",
+   "read_only": 1,
+   "description": "Личный аккаунт, который увидел или отправил это сообщение"
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1,
+   "description": "Время по данным Telegram, а не момент записи"
+  },
+  {
+   "fieldname": "state_section",
+   "fieldtype": "Section Break",
+   "label": "State"
+  },
+  {
+   "fieldname": "is_edited",
+   "fieldtype": "Check",
+   "label": "Edited",
+   "read_only": 1
+  },
+  {
+   "fieldname": "edited_on",
+   "fieldtype": "Datetime",
+   "label": "Edited On",
+   "read_only": 1,
+   "depends_on": "is_edited"
+  },
+  {
+   "fieldname": "column_break_state",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_deleted",
+   "fieldtype": "Check",
+   "label": "Deleted in Telegram",
+   "read_only": 1,
+   "description": "Сообщения нет в чате, но история его помнит"
+  },
+  {
+   "fieldname": "deleted_on",
+   "fieldtype": "Datetime",
+   "label": "Deleted On",
+   "read_only": 1,
+   "depends_on": "is_deleted"
   }
  ],
  "index_web_pages_for_search": 1,

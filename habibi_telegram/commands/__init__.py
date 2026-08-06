@@ -84,9 +84,78 @@ def webhook_info(context, telegram_bot):
 	frappe.destroy()
 
 
+@click.command("list-accounts")
+@pass_context
+def list_accounts(context):
+	"""Показать личные аккаунты сайта и состояние их синхронизации"""
+	site = get_site(context)
+	frappe.init(site=site)
+	frappe.connect()
+
+	accounts = frappe.get_all(
+		"Telegram Account",
+		fields=["name", "username", "phone", "status", "sync_enabled", "last_sync_on"],
+	)
+	click.echo(f"Telegram Accounts: {len(accounts)}")
+	for account in accounts:
+		sync = "sync on " if account.sync_enabled else "sync off"
+		click.echo(
+			f"- {account.name} ({account.username or account.phone}) "
+			f"[{account.status}, {sync}] last sync: {account.last_sync_on or '—'}"
+		)
+
+	frappe.destroy()
+
+
+@click.command("sync-account")
+@click.argument("telegram_account")
+@pass_context
+def sync_account(context, telegram_account):
+	"""Забрать всё новое по аккаунту прямо сейчас"""
+	site = get_site(context)
+	frappe.init(site=site)
+	frappe.connect()
+
+	from habibi_telegram.user_client import sync_account as sync
+
+	stats = sync(telegram_account)
+	frappe.db.commit()
+	click.echo(f"new: {stats.get('new', 0)}, edited: {stats.get('edited', 0)}, deleted: {stats.get('deleted', 0)}")
+
+	frappe.destroy()
+
+
+@click.command("listen")
+@click.argument("telegram_account")
+@pass_context
+def listen(context, telegram_account):
+	"""
+	Слушать апдейты аккаунта в открытом соединении.
+
+	Обычной установке не нужно: планировщик и так забирает всё раз в минуту.
+	Команда для тех, кому эта минута дорога — процесс вешается в supervisor.
+	"""
+	site = get_site(context)
+	frappe.init(site=site)
+	frappe.connect()
+
+	from habibi_telegram.user_client import listen as run_listener
+
+	click.echo(f"Listening for {telegram_account}. Ctrl-C to stop.")
+	try:
+		run_listener(telegram_account)
+	except KeyboardInterrupt:
+		click.echo("Stopped")
+
+	frappe.destroy()
+
+
 telegram.add_command(list_bots)
 telegram.add_command(set_webhook)
 telegram.add_command(remove_webhook)
 telegram.add_command(webhook_info)
+telegram.add_command(list_accounts)
+telegram.add_command(sync_account)
+telegram.add_command(listen)
 
 commands = [telegram]

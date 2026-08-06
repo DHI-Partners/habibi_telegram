@@ -32,3 +32,15 @@ telegram_bot_handler = [
 telegram_update_pre_processors = [
 	"habibi_telegram.handlers.logging.pre_process",
 ]
+
+# ---------------------------------------------------------------------------
+# Личные аккаунты (MTProto). Вебхуков там нет, апдейты забираются запросом
+# updates.getDifference — раз в минуту по каждому подключённому аккаунту.
+# Если аккаунтов нет, задача ничего не делает и стоит одного SELECT'а.
+# ---------------------------------------------------------------------------
+
+scheduler_events = {
+	"cron": {
+		"* * * * *": ["habibi_telegram.user_client.sync_all_accounts"],
+	}
+}

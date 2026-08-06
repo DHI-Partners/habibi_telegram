@@ -96,9 +96,18 @@ def send_file(
 
 
 @frappe.whitelist()
-def send_chat_message(chat: str, message: str, from_bot: str = None, parse_mode: str = None):
+def send_chat_message(
+	chat: str,
+	message: str,
+	from_bot: str = None,
+	parse_mode: str = None,
+	from_account: str = None,
+):
 	"""
 	Отправить сообщение в чат из интерфейса.
+
+	from_account — писать от имени личного аккаунта вместо бота. В личную
+	переписку двух людей бота не позовёшь, туда только так.
 
 	Права проверяем по самому чату: писать в него могут те же, кому доступна
 	запись в Telegram Chat, то есть Telegram Bot Manager и System Manager.
@@ -108,6 +117,13 @@ def send_chat_message(chat: str, message: str, from_bot: str = None, parse_mode:
 	chat_id = frappe.db.get_value("Telegram Chat", chat, "chat_id")
 	if not chat_id:
 		frappe.throw(_("Unknown chat: {0}").format(chat))
+
+	if from_account:
+		from habibi_telegram.user_client import send_message as send_from_account
+
+		return send_from_account(
+			from_account, chat_id=chat_id, text=message, parse_mode=parse_mode
+		)
 
 	return send_message(message, parse_mode=parse_mode, chat_id=chat_id, from_bot=from_bot)
 

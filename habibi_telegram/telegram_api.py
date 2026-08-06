@@ -159,6 +159,31 @@ class TelegramBotAPI:
 
 		return self.call("sendDocument", payload, files={"document": (name, content, mime)})
 
+	def edit_message_text(
+		self,
+		chat_id,
+		message_id,
+		text: str,
+		parse_mode: str = None,
+		reply_markup=None,
+		disable_web_page_preview=None,
+	):
+		"""
+		Править бот может только свои сообщения и только 48 часов —
+		дальше Telegram отвечает "message can't be edited".
+		"""
+		return self.call(
+			"editMessageText",
+			{
+				"chat_id": chat_id,
+				"message_id": message_id,
+				"text": text,
+				"parse_mode": parse_mode,
+				"reply_markup": reply_markup,
+				"disable_web_page_preview": disable_web_page_preview,
+			},
+		)
+
 	def delete_message(self, chat_id, message_id):
 		return self.call("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
 

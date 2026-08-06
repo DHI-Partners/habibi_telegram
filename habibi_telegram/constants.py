@@ -8,3 +8,7 @@ SECRET_TOKEN_HEADER = "X-Telegram-Bot-Api-Secret-Token"
 # Роли, которые заводятся при установке
 ROLE_MANAGER = "Telegram Bot Manager"
 ROLE_USER = "Telegram Bot User"
+
+# Раздел в боковом меню и карточка со ссылками внутри него
+WORKSPACE = "Habibi Telegram"
+WORKSPACE_CARD = "Telegram"

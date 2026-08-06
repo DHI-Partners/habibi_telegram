@@ -12,13 +12,28 @@ class TelegramChat(Document):
 
 		return get_bot(self.bots[0].telegram_bot)
 
+	def get_account(self) -> str | None:
+		"""
+		Первый личный аккаунт, видящий этот чат.
 
-def get_or_create(chat: dict, telegram_bot: str = None, telegram_user: str = None) -> TelegramChat:
+		В личную переписку двух людей бота не позовёшь, и ответить туда можно
+		только от имени аккаунта.
+		"""
+		return self.accounts[0].telegram_account if self.accounts else None
+
+
+def get_or_create(
+	chat: dict,
+	telegram_bot: str = None,
+	telegram_user: str = None,
+	telegram_account: str = None,
+) -> TelegramChat:
 	"""
 	Найти чат по id из апдейта, при отсутствии — завести.
 
 	Состав участников Bot API целиком не отдаёт, поэтому пополняем его по мере
-	того, как от людей приходят сообщения.
+	того, как от людей приходят сообщения. Личный аккаунт, наоборот, приносит
+	диалоги списком — но записываются они в тот же документ, с тем же chat_id.
 	"""
 	if not chat or not chat.get("id"):
 		return None
@@ -44,6 +59,8 @@ def get_or_create(chat: dict, telegram_bot: str = None, telegram_user: str = Non
 			doc.append("bots", {"telegram_bot": telegram_bot})
 		if telegram_user:
 			doc.append("users", {"telegram_user": telegram_user})
+		if telegram_account:
+			doc.append("accounts", {"telegram_account": telegram_account})
 		doc.insert(ignore_permissions=True)
 
 		return doc
@@ -51,9 +68,21 @@ def get_or_create(chat: dict, telegram_bot: str = None, telegram_user: str = Non
 	doc = frappe.get_doc("Telegram Chat", name)
 	changed = False
 
+	if doc.title != title.strip() and title.strip() != chat_id:
+		# Названия групп и имена людей меняются; в истории пусть будет текущее
+		doc.title = title.strip()
+		changed = True
+
+	if chat.get("type") and doc.type != chat["type"]:
+		# Тип мог остаться пустым: аккаунт видит сообщение раньше, чем сущность
+		# чата, к которому оно относится
+		doc.type = chat["type"]
+		changed = True
+
 	for table, field, value in (
 		("bots", "telegram_bot", telegram_bot),
 		("users", "telegram_user", telegram_user),
+		("accounts", "telegram_account", telegram_account),
 	):
 		if not value:
 			continue

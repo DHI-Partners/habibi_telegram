@@ -16,7 +16,8 @@
   "members_section",
   "users",
   "column_break_members",
-  "bots"
+  "bots",
+  "accounts"
  ],
  "fields": [
   {
@@ -81,6 +82,13 @@
    "fieldtype": "Table",
    "label": "Bots",
    "options": "Telegram Bot Item"
+  },
+  {
+   "fieldname": "accounts",
+   "fieldtype": "Table",
+   "label": "Accounts",
+   "options": "Telegram Account Item",
+   "description": "Личные аккаунты, которые видят этот чат"
   }
  ],
  "index_web_pages_for_search": 1,
