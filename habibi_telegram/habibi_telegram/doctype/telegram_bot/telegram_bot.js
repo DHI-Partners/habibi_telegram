@@ -19,6 +19,15 @@ frappe.ui.form.on("Telegram Bot", {
 	refresh(frm) {
 		disable_password_strength_check(frm);
 
+		// У бота владельца нет: получателя уведомлений надо назвать явно
+		frm.set_intro("");
+		if (frm.doc.notify_on_new_message && !frm.doc.notify_user && !frm.doc.notify_role) {
+			frm.set_intro(
+				__("Notifications are on, but nobody receives them: fill in Notify User or Notify Role."),
+				"orange"
+			);
+		}
+
 		if (frm.is_new()) return;
 
 		frm.dashboard.clear_headline();

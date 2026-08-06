@@ -19,7 +19,15 @@
   "column_break_webhook",
   "set_webhook",
   "remove_webhook",
-  "show_webhook_info"
+  "show_webhook_info",
+  "notify_section",
+  "notify_on_new_message",
+  "notify_user",
+  "notify_role",
+  "column_break_notify",
+  "notify_private",
+  "notify_groups",
+  "notify_channels"
  ],
  "fields": [
   {
@@ -108,6 +116,60 @@
    "fieldname": "show_webhook_info",
    "fieldtype": "Button",
    "label": "Webhook Info"
+  },
+  {
+   "fieldname": "notify_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "1",
+   "fieldname": "notify_on_new_message",
+   "fieldtype": "Check",
+   "label": "Notify on New Message",
+   "description": "Показывать уведомление в колокольчике. Одно на чат, пока предыдущее не прочитано"
+  },
+  {
+   "fieldname": "notify_user",
+   "fieldtype": "Link",
+   "label": "Notify User",
+   "options": "User",
+   "depends_on": "notify_on_new_message",
+   "description": "Кому показывать уведомления о сообщениях боту. У бота владельца нет, поэтому без получателя или роли уведомлений не будет"
+  },
+  {
+   "fieldname": "column_break_notify",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "notify_private",
+   "fieldtype": "Check",
+   "label": "Private Chats",
+   "depends_on": "notify_on_new_message"
+  },
+  {
+   "default": "1",
+   "fieldname": "notify_groups",
+   "fieldtype": "Check",
+   "label": "Groups",
+   "depends_on": "notify_on_new_message"
+  },
+  {
+   "default": "0",
+   "fieldname": "notify_channels",
+   "fieldtype": "Check",
+   "label": "Channels",
+   "description": "Ленты каналов заваливают колокольчик, поэтому по умолчанию выключено",
+   "depends_on": "notify_on_new_message"
+  },
+  {
+   "fieldname": "notify_role",
+   "fieldtype": "Link",
+   "label": "Notify Role",
+   "options": "Role",
+   "depends_on": "notify_on_new_message",
+   "description": "Общий аккаунт: уведомлять всех с этой ролью. Складывается с Notify User"
   }
  ],
  "index_web_pages_for_search": 1,

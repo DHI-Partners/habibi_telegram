@@ -38,6 +38,21 @@ function set_headline(frm) {
 	}
 }
 
+// Включённые уведомления без получателя выглядят как поломка: галочка стоит,
+// а в колокольчике пусто. Administrator сам собой не подставляется — это
+// служебный логин, в интерфейсе под ним не работают
+function warn_about_recipients(frm) {
+	frm.set_intro("");
+
+	if (!frm.doc.notify_on_new_message) return;
+	if (frm.doc.notify_user || frm.doc.user || frm.doc.notify_role) return;
+
+	frm.set_intro(
+		__("Notifications are on, but nobody receives them: fill in User, Notify User or Notify Role."),
+		"orange"
+	);
+}
+
 // Код и пароль спрашиваем диалогом и передаём параметром: в базе им делать нечего
 function ask_code(frm) {
 	frappe.prompt(
@@ -89,6 +104,7 @@ frappe.ui.form.on("Telegram Account", {
 	refresh(frm) {
 		disable_password_strength_check(frm);
 		set_headline(frm);
+		warn_about_recipients(frm);
 
 		if (frm.is_new()) return;
 

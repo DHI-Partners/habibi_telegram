@@ -8,6 +8,7 @@ import frappe
 
 from habibi_telegram.habibi_telegram.doctype.telegram_chat import telegram_chat as chat_store
 from habibi_telegram.habibi_telegram.doctype.telegram_user import telegram_user as user_store
+from habibi_telegram.notifications import notify_new_message
 from habibi_telegram.utils import update as u
 
 
@@ -56,6 +57,8 @@ def log_incoming_message(context):
 		direction="Incoming",
 	)
 	doc.insert(ignore_permissions=True)
+
+	notify_new_message(doc, context.telegram_chat, telegram_bot=context.telegram_bot.name)
 
 	return doc
 

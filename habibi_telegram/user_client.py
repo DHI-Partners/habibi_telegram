@@ -353,9 +353,10 @@ async def _fetch_recent(client, account, stats: dict, history_limit: int = None)
 		entities = _entities_from(messages, dialog.entity)
 
 		# Telegram отдаёт историю от новых к старым — пишем в обратном порядке,
-		# чтобы «последнее сообщение» в чате осталось последним
+		# чтобы «последнее сообщение» в чате осталось последним.
+		# notify=False: разбор истории — не повод оповещать о сотнях сообщений
 		for message in reversed(messages):
-			if store.log_message(account, message, entities)[1]:
+			if store.log_message(account, message, entities, notify=False)[1]:
 				stats["new"] += 1
 
 		# Разбор сотни диалогов идёт минутами; терять его из-за одного сбоя жалко
@@ -378,7 +379,7 @@ async def _fetch_channel_history(client, account, channel_id, stats: dict, limit
 	entities = _entities_from(messages, entity)
 
 	for message in reversed(messages):
-		if store.log_message(account, message, entities)[1]:
+		if store.log_message(account, message, entities, notify=False)[1]:
 			stats["new"] += 1
 
 

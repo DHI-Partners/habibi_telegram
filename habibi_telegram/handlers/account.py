@@ -15,6 +15,7 @@ import frappe
 from habibi_telegram import mtproto
 from habibi_telegram.habibi_telegram.doctype.telegram_chat import telegram_chat as chat_store
 from habibi_telegram.habibi_telegram.doctype.telegram_user import telegram_user as user_store
+from habibi_telegram.notifications import notify_new_message
 
 # Медиа без подписи: в списке сообщений лучше пометка, чем пустая строка
 MEDIA_LABELS = {
@@ -32,7 +33,9 @@ MEDIA_LABELS = {
 }
 
 
-def log_message(account, message, entities: dict = None) -> tuple[str | None, bool]:
+def log_message(
+	account, message, entities: dict = None, notify: bool = True
+) -> tuple[str | None, bool]:
 	"""
 	Записать сообщение аккаунта.
 
@@ -40,7 +43,8 @@ def log_message(account, message, entities: dict = None) -> tuple[str | None, bo
 	нужно, чтобы счётчики синхронизации не считали повторные апдейты новыми.
 
 	message — объект Message или MessageService из Telethon,
-	entities — индекс сущностей из того же ответа (см. mtproto.index_entities).
+	entities — индекс сущностей из того же ответа (см. mtproto.index_entities),
+	notify — оповещать ли в колокольчике; на разборе старой истории выключается.
 	"""
 	entities = entities or {}
 
@@ -78,6 +82,9 @@ def log_message(account, message, entities: dict = None) -> tuple[str | None, bo
 		sent_on=mtproto.to_system_datetime(getattr(message, "date", None)),
 	)
 	doc.insert(ignore_permissions=True)
+
+	if notify:
+		notify_new_message(doc, chat, telegram_account=account.name)
 
 	return doc.name, True
 
