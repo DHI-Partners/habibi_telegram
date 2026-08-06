@@ -70,6 +70,7 @@ habibi_telegram.ChatConsole = class ChatConsole {
 		this.chats = [];
 		this.messages = [];
 		this.chat = null;
+		this.context = null;
 		this.search = "";
 		this.has_more = false;
 		this.sending = false;
@@ -87,6 +88,8 @@ habibi_telegram.ChatConsole = class ChatConsole {
 	}
 
 	refresh() {
+		// Вернулись на страницу — шапка Desk могла стать другой высоты
+		this.fit_height();
 		this.load_chats({ silent: true });
 
 		if (this.chat) {
@@ -111,6 +114,7 @@ habibi_telegram.ChatConsole = class ChatConsole {
 					<div class="tg-messages"></div>
 					<div class="tg-composer"></div>
 				</div>
+				<div class="tg-context"></div>
 			</div>
 		`);
 
@@ -120,10 +124,25 @@ habibi_telegram.ChatConsole = class ChatConsole {
 		this.$header = this.$console.find(".tg-header");
 		this.$messages = this.$console.find(".tg-messages");
 		this.$composer = this.$console.find(".tg-composer");
+		this.$context = this.$console.find(".tg-context");
 
 		this.render_conversation();
+		this.fit_height();
 
 		this.page.set_secondary_action(__("Refresh"), () => this.refresh(), "refresh");
+	}
+
+	fit_height() {
+		// Отступ сверху меряется по факту: подставлять сюда число — это гадать
+		// про высоту шапки Desk, а промах видно пустой полосой под консолью
+		if (!this.$console.is(":visible")) return;
+
+		const top = Math.round(this.$console[0].getBoundingClientRect().top + window.scrollY);
+
+		if (top > 0 && top !== this.console_top) {
+			this.console_top = top;
+			this.$console[0].style.setProperty("--tg-console-top", `${top}px`);
+		}
 	}
 
 	bind_events() {
@@ -163,6 +182,23 @@ habibi_telegram.ChatConsole = class ChatConsole {
 		});
 
 		this.$composer.on("input", ".tg-input", (e) => this.autosize(e.currentTarget));
+
+		// Карточка собеседника перерисовывается на каждую привязку
+		this.$context.on("click", ".tg-create", (e) =>
+			this.create_record($(e.currentTarget).attr("data-doctype"))
+		);
+
+		this.$context.on("click", ".tg-link-existing", () => this.link_existing());
+
+		this.$context.on("click", ".tg-unlink", (e) => {
+			const $button = $(e.currentTarget);
+			this.unlink_record($button.attr("data-doctype"), $button.attr("data-name"));
+		});
+
+		$(window).on(
+			"resize.telegram-console",
+			frappe.utils.debounce(() => this.fit_height(), 150)
+		);
 	}
 
 	listen() {
@@ -252,12 +288,14 @@ habibi_telegram.ChatConsole = class ChatConsole {
 
 		this.chat = name;
 		this.messages = [];
+		this.context = null;
 		// Подписку проверяет сервер: в комнату чужого чата не пустят
 		frappe.realtime.doc_subscribe("Telegram Chat", this.chat);
 
 		this.render_chats();
 		this.render_conversation();
 		this.load_messages();
+		this.load_context();
 	}
 
 	current_chat() {
@@ -365,6 +403,7 @@ habibi_telegram.ChatConsole = class ChatConsole {
 			this.$header.empty();
 			this.$composer.empty();
 			this.$messages.html(`<div class="tg-empty">${__("Select a chat to start")}</div>`);
+			this.render_context();
 			return;
 		}
 
@@ -383,6 +422,7 @@ habibi_telegram.ChatConsole = class ChatConsole {
 		`);
 
 		this.render_composer();
+		this.render_context();
 	}
 
 	render_composer() {
@@ -444,6 +484,420 @@ habibi_telegram.ChatConsole = class ChatConsole {
 		if (this.draft) {
 			this.$input.val(this.draft).trigger("input");
 		}
+	}
+
+	// -- карточка собеседника -----------------------------------------------
+	//
+	// Третья колонка — то же, что справа в Chatwoot или Intercom: кто по ту
+	// сторону и что по нему уже заведено в CRM. Показывается только в личной
+	// переписке: в группе объявлений собеседника нет, лид там растёт из
+	// конкретного сообщения, а не из диалога.
+
+	load_context() {
+		if (!this.private_chat()) {
+			this.context = null;
+			this.render_context();
+			return;
+		}
+
+		const requested = this.chat;
+
+		return frappe
+			.call({
+				method: "habibi_telegram.crm.get_chat_context",
+				args: { chat_id: requested },
+			})
+			.then((r) => {
+				// Пока ходили на сервер, могли открыть другой чат
+				if (requested !== this.chat) return;
+
+				this.context = r.message || { applicable: false };
+				this.render_context();
+			})
+			.catch(() => {
+				// Панель — не главное на странице; переписка важнее её ошибок.
+				// Но и «Loading...» навсегда оставлять нельзя
+				this.context = { applicable: false };
+				this.render_context();
+			});
+	}
+
+	private_chat() {
+		const chat = this.current_chat();
+
+		return !!(this.chat && chat && chat.type === "private");
+	}
+
+	render_context() {
+		// Тип чата известен из списка диалогов, но последнее слово за сервером:
+		// он же решает, есть ли кого показывать
+		const applicable =
+			this.private_chat() && (!this.context || this.context.applicable);
+
+		// Колонки нет — место уходит переписке
+		this.$console.toggleClass("tg-has-context", applicable);
+
+		if (!applicable) {
+			this.$context.empty();
+			return;
+		}
+
+		if (!this.context) {
+			this.$context.html(`<div class="tg-empty">${__("Loading...")}</div>`);
+			return;
+		}
+
+		const chat = this.current_chat();
+		const contact = this.context.contact;
+		const title = (contact && contact.full_name) || (chat && chat.title) || this.chat;
+
+		this.$context.html(`
+			<div class="tg-card">
+				<div class="tg-avatar tg-avatar-lg">${frappe.utils.escape_html(
+					this.initials(title)
+				)}</div>
+				<div class="tg-card-name">${frappe.utils.escape_html(title)}</div>
+				${
+					contact && contact.telegram_username
+						? `<div class="tg-card-sub">@${frappe.utils.escape_html(
+								contact.telegram_username
+						  )}</div>`
+						: ""
+				}
+				${this.card_actions_html(contact)}
+			</div>
+			${this.details_html(contact)}
+			${this.crm_html()}
+			${this.stats_html()}
+		`);
+	}
+
+	card_actions_html(contact) {
+		const buttons = [];
+
+		if (contact && contact.telegram_username) {
+			buttons.push(`
+				<a class="btn btn-default btn-sm" target="_blank" rel="noopener"
+					href="https://t.me/${encodeURIComponent(contact.telegram_username)}">${__(
+						"Open in Telegram"
+					)}</a>
+			`);
+		}
+
+		if (contact && contact.telegram_user) {
+			buttons.push(`
+				<a class="btn btn-default btn-sm"
+					href="/app/telegram-user/${encodeURIComponent(contact.telegram_user)}">${__(
+						"Contact"
+					)}</a>
+			`);
+		}
+
+		return buttons.length ? `<div class="tg-card-actions">${buttons.join("")}</div>` : "";
+	}
+
+	details_html(contact) {
+		const chat = this.current_chat();
+		const rows = [this.field_html(__("Chat ID"), chat && chat.chat_id)];
+
+		// Участники пополняются по мере входящих: у совсем свежего чата
+		// собеседник ещё неизвестен, и показывать про него нечего
+		if (contact) {
+			rows.unshift(this.field_html(__("Telegram ID"), contact.telegram_user_id));
+
+			rows.push(
+				contact.user
+					? this.field_html(
+							__("User"),
+							`<a href="/app/user/${encodeURIComponent(
+								contact.user
+							)}">${frappe.utils.escape_html(contact.user)}</a>`,
+							true
+					  )
+					: this.field_html(__("User"), __("Not linked"))
+			);
+		}
+
+		return `
+			<div class="tg-section">
+				<div class="tg-section-head"><span>${__("Details")}</span></div>
+				${rows.join("")}
+			</div>
+		`;
+	}
+
+	field_html(label, value, is_html = false) {
+		if (!value) return "";
+
+		return `
+			<div class="tg-field">
+				<span class="tg-field-label">${label}</span>
+				<span class="tg-field-value">${
+					is_html ? value : frappe.utils.escape_html(String(value))
+				}</span>
+			</div>
+		`;
+	}
+
+	crm_html() {
+		const links = this.context.links || [];
+		const targets = this.context.targets || [];
+		const can_link = this.context.can_link && targets.length;
+
+		const head = `
+			<div class="tg-section-head">
+				<span>${__("CRM")}</span>
+				${
+					can_link
+						? `<button class="btn btn-xs btn-default tg-link-existing">${__(
+								"Link existing"
+						  )}</button>`
+						: ""
+				}
+			</div>
+		`;
+
+		if (!links.length) {
+			return `
+				<div class="tg-section">
+					${head}
+					<div class="tg-section-empty">${
+						can_link
+							? __("Not in CRM yet")
+							: __("Nothing linked to this chat")
+					}</div>
+					${can_link ? this.create_html(targets, true) : ""}
+				</div>
+			`;
+		}
+
+		return `
+			<div class="tg-section">
+				${head}
+				${links.map((link) => this.link_html(link)).join("")}
+				${can_link ? this.create_html(targets, false) : ""}
+			</div>
+		`;
+	}
+
+	create_html(targets, primary) {
+		const main = targets[0];
+		const rest = targets.slice(1);
+		const style = primary ? "btn-primary btn-sm" : "btn-default btn-xs";
+		const label = __("Create {0}", [__(main.label)]);
+
+		const button = `
+			<button class="btn ${style} tg-create"
+				data-doctype="${frappe.utils.escape_html(main.doctype)}">${label}</button>
+		`;
+
+		if (!rest.length) {
+			return `<div class="tg-create-wrapper">${button}</div>`;
+		}
+
+		// Основное действие — кнопкой, остальные доктайпы — под стрелкой, как
+		// у стандартного «Создать» в Desk
+		return `
+			<div class="tg-create-wrapper btn-group">
+				${button}
+				<button class="btn ${style} dropdown-toggle dropdown-toggle-split"
+					data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+					<span class="sr-only">${__("More")}</span>
+				</button>
+				<div class="dropdown-menu dropdown-menu-right">
+					${rest
+						.map(
+							(target) => `
+								<a class="dropdown-item tg-create" href="#"
+									data-doctype="${frappe.utils.escape_html(target.doctype)}">${__(
+										"Create {0}",
+										[__(target.label)]
+									)}</a>
+							`
+						)
+						.join("")}
+				</div>
+			</div>
+		`;
+	}
+
+	link_html(link) {
+		const route = `/app/${frappe.router.slug(link.doctype)}/${encodeURIComponent(link.name)}`;
+
+		// Номер записи впереди: в колонку он влезает целиком, а обрезается
+		// хвост с названием доктайпа, который и так понятен по статусу. У
+		// доктайпов без title_field заголовок и есть номер — тогда только он
+		const subtitle =
+			link.title === link.name
+				? __(link.doctype)
+				: `${link.name} · ${__(link.doctype)}`;
+
+		return `
+			<div class="tg-link">
+				<div class="tg-link-body">
+					<a class="tg-link-title" href="${route}">${frappe.utils.escape_html(
+						link.title
+					)}</a>
+					<div class="tg-link-meta">
+						<span class="tg-link-id" title="${frappe.utils.escape_html(
+							subtitle
+						)}">${frappe.utils.escape_html(subtitle)}</span>
+						${
+							link.status
+								? `<span class="indicator-pill ${frappe.utils.escape_html(
+										link.indicator
+								  )}">${__(link.status)}</span>`
+								: ""
+						}
+					</div>
+				</div>
+				${
+					this.context.can_link
+						? `<button class="btn btn-xs tg-unlink" title="${__("Unlink")}"
+								data-doctype="${frappe.utils.escape_html(link.doctype)}"
+								data-name="${frappe.utils.escape_html(link.name)}">&times;</button>`
+						: ""
+				}
+			</div>
+		`;
+	}
+
+	stats_html() {
+		const stats = this.context.stats || {};
+
+		return `
+			<div class="tg-section">
+				<div class="tg-section-head"><span>${__("Activity")}</span></div>
+				${this.field_html(__("Messages"), stats.messages)}
+				${this.field_html(__("First message"), this.day_stamp(stats.first_message_on))}
+				${this.field_html(__("Last message"), this.day_stamp(stats.last_message_on))}
+			</div>
+		`;
+	}
+
+	day_stamp(timestamp) {
+		if (!timestamp) return "";
+
+		const local = moment(frappe.datetime.convert_to_user_tz(timestamp));
+
+		if (local.isSame(moment(), "day")) return __("Today");
+
+		return frappe.datetime.global_date_format(local.format("YYYY-MM-DD"));
+	}
+
+	create_record(doctype) {
+		if (!doctype || !this.chat) return;
+
+		const chat = this.chat;
+
+		frappe
+			.call({
+				method: "habibi_telegram.crm.new_doc_defaults",
+				args: { chat_id: chat, doctype: doctype },
+			})
+			.then((r) => {
+				const defaults = r.message || {};
+
+				frappe.model.with_doctype(doctype, () => {
+					const doc = frappe.model.get_new_doc(doctype);
+					Object.assign(doc, defaults);
+
+					// Стандартное окно быстрого ввода — те же поля, что и в
+					// «Создать» из списка. Со страницы не уходим: чат остаётся
+					// открытым, и после сохранения связь ставится сама
+					frappe.ui.form.make_quick_entry(
+						doctype,
+						(created) => this.attach_record(chat, doctype, created.name),
+						null,
+						doc,
+						true
+					);
+				});
+			});
+	}
+
+	link_existing() {
+		const targets = (this.context && this.context.targets) || [];
+		if (!targets.length) return;
+
+		const chat = this.chat;
+
+		const dialog = new frappe.ui.Dialog({
+			title: __("Link Existing Record"),
+			fields: [
+				{
+					fieldname: "link_doctype",
+					label: __("Type"),
+					fieldtype: "Select",
+					reqd: 1,
+					default: targets[0].doctype,
+					options: targets.map((target) => ({
+						value: target.doctype,
+						label: __(target.label),
+					})),
+				},
+				{
+					fieldname: "link_name",
+					label: __("Record"),
+					fieldtype: "Dynamic Link",
+					options: "link_doctype",
+					reqd: 1,
+				},
+			],
+			primary_action_label: __("Link"),
+			primary_action: (values) => {
+				dialog.hide();
+				this.attach_record(chat, values.link_doctype, values.link_name);
+			},
+		});
+
+		dialog.show();
+	}
+
+	attach_record(chat, doctype, name) {
+		return frappe
+			.call({
+				method: "habibi_telegram.crm.link_record",
+				args: { chat_id: chat, link_doctype: doctype, link_name: name },
+			})
+			.then((r) => {
+				const route = `/app/${frappe.router.slug(doctype)}/${encodeURIComponent(name)}`;
+
+				frappe.show_alert({
+					message: __("Linked to {0}", [
+						`<a href="${route}">${frappe.utils.escape_html(name)}</a>`,
+					]),
+					indicator: "green",
+				});
+
+				this.apply_links(chat, r.message);
+			});
+	}
+
+	unlink_record(doctype, name) {
+		const chat = this.chat;
+
+		frappe.confirm(
+			__("Unlink {0}? The record itself stays in place.", [
+				frappe.utils.escape_html(name),
+			]),
+			() => {
+				frappe
+					.call({
+						method: "habibi_telegram.crm.unlink_record",
+						args: { chat_id: chat, link_doctype: doctype, link_name: name },
+					})
+					.then((r) => this.apply_links(chat, r.message));
+			}
+		);
+	}
+
+	apply_links(chat, links) {
+		// Пока ходили на сервер, могли открыть другой чат — там свои связи
+		if (chat !== this.chat || !this.context) return;
+
+		this.context.links = links || [];
+		this.render_context();
 	}
 
 	// -- голосовые ----------------------------------------------------------

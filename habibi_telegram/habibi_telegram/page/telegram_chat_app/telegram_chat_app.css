@@ -5,8 +5,14 @@
 
 .telegram-console {
 	display: flex;
-	/* Высота шапки Desk с отступами страницы */
-	height: calc(100vh - 190px);
+	/*
+	 * Консоль занимает всё, что осталось под шапкой Desk. Сколько та заняла,
+	 * знает только сама страница — высота зависит от темы, ширины окна и от
+	 * того, что в шапку положили, — поэтому отступ сверху меряется на месте и
+	 * приезжает переменной. Значение по умолчанию — на случай, если посчитать
+	 * не вышло; лучше немного не дотянуть до низа, чем уехать за экран.
+	 */
+	height: calc(100vh - var(--tg-console-top, 190px) - 16px);
 	min-height: 420px;
 	border: 1px solid var(--border-color);
 	border-radius: var(--border-radius-md);
@@ -363,4 +369,181 @@
 	padding: 24px;
 	text-align: center;
 	color: var(--text-muted);
+}
+
+/* -- карточка собеседника -------------------------------------------------
+ *
+ * Третья колонка. Есть только у личной переписки — класс на контейнере ставит
+ * страница; в группе колонки нет, и место достаётся переписке.
+ */
+
+.telegram-console .tg-context {
+	display: none;
+}
+
+.telegram-console.tg-has-context .tg-context {
+	display: flex;
+	flex-direction: column;
+	width: 300px;
+	flex-shrink: 0;
+	overflow-y: auto;
+	border-left: 1px solid var(--border-color);
+}
+
+/* Узкому экрану переписка нужнее карточки */
+@media (max-width: 1100px) {
+	.telegram-console.tg-has-context .tg-context {
+		display: none;
+	}
+}
+
+.telegram-console .tg-card {
+	padding: 20px 16px 16px;
+	text-align: center;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-avatar-lg {
+	width: 64px;
+	height: 64px;
+	margin: 0 auto;
+	font-size: var(--text-lg);
+}
+
+.telegram-console .tg-card-name {
+	margin-top: 10px;
+	font-weight: 600;
+	color: var(--text-color);
+	overflow-wrap: anywhere;
+}
+
+.telegram-console .tg-card-sub {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	overflow-wrap: anywhere;
+}
+
+.telegram-console .tg-card-actions {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.telegram-console .tg-section {
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--border-color);
+}
+
+.telegram-console .tg-section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	/* Высота держится кнопкой, чтобы заголовки секций стояли ровно */
+	min-height: 24px;
+	margin-bottom: 6px;
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-section:last-child {
+	border-bottom: none;
+}
+
+.telegram-console .tg-section-empty {
+	padding-bottom: 10px;
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-field {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 3px 0;
+	font-size: var(--text-sm);
+}
+
+.telegram-console .tg-field-label {
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-field-value {
+	text-align: right;
+	color: var(--text-color);
+	overflow-wrap: anywhere;
+}
+
+.telegram-console .tg-link {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md);
+	background: var(--bg-color);
+}
+
+.telegram-console .tg-link-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.telegram-console .tg-link-title {
+	display: block;
+	font-weight: 600;
+	font-size: var(--text-sm);
+	color: var(--text-color);
+	overflow-wrap: anywhere;
+}
+
+.telegram-console .tg-link-meta {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+	font-size: var(--text-xs);
+	color: var(--text-muted);
+}
+
+/* Номер записи бывает длиннее колонки; место у статуса не отнимаем */
+.telegram-console .tg-link-id {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.telegram-console .tg-unlink {
+	flex-shrink: 0;
+	padding: 0 4px;
+	border: none;
+	background: none;
+	font-size: 16px;
+	line-height: 1.2;
+	color: var(--text-muted);
+}
+
+.telegram-console .tg-unlink:hover {
+	color: var(--text-color);
+}
+
+.telegram-console .tg-create-wrapper {
+	display: flex;
+	width: 100%;
+}
+
+.telegram-console .tg-create-wrapper > .tg-create {
+	flex: 1;
+}
+
+/* Стрелку рисует сам bootstrap, ширину ей задаёт только её содержимое */
+.telegram-console .tg-create-wrapper > .dropdown-toggle-split {
+	flex: 0 0 auto;
 }

@@ -17,7 +17,9 @@
   "users",
   "column_break_members",
   "bots",
-  "accounts"
+  "accounts",
+  "links_section",
+  "links"
  ],
  "fields": [
   {
@@ -89,6 +91,18 @@
    "label": "Accounts",
    "options": "Telegram Account Item",
    "description": "Личные аккаунты, которые видят этот чат"
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Linked Documents"
+  },
+  {
+   "fieldname": "links",
+   "fieldtype": "Table",
+   "label": "Links",
+   "options": "Dynamic Link",
+   "description": "Записи CRM, к которым привязан этот чат"
   }
  ],
  "index_web_pages_for_search": 1,
