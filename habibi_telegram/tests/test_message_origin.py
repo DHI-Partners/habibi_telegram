@@ -129,6 +129,16 @@ class TestЛичныйАккаунт(IntegrationTestCase):
 		self.assertFalse(created)
 		self.assertEqual(frappe.db.get_value("Telegram Message", name, "is_automated"), 1)
 
+	def test_сообщение_аккаунта_не_получает_бота_по_умолчанию(self):
+		# Основной бот хранится глобальным default'ом под ключом telegram_bot, и
+		# frappe подставляет его в одноимённое поле каждого нового документа.
+		# Сообщение аккаунта с таким «ботом» ушло бы в ответ ботом, который этому
+		# человеку писать не может.
+		make_bot()
+		frappe.db.set_default("telegram_bot", BOT)
+		name, _ = account_store.log_message(self.account, self._message(305, out=False))
+		self.assertIsNone(frappe.db.get_value("Telegram Message", name, "telegram_bot"))
+
 	def test_повтор_без_automated_пометку_не_снимает(self):
 		name, _ = account_store.log_message(self.account, self._message(304, out=True), automated=True)
 		account_store.log_message(self.account, self._message(304, out=True))

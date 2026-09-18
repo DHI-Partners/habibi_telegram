@@ -4,6 +4,14 @@ from frappe.model.document import Document
 
 
 class TelegramMessage(Document):
+	def before_insert(self):
+		# Сообщение приходит либо через бота, либо через личный аккаунт — не
+		# через оба. Основной бот хранится глобальным default'ом под ключом
+		# telegram_bot, и frappe сам подставляет его в одноимённое поле каждого
+		# нового документа — в том числе сообщению аккаунта, у которого бота нет.
+		if self.telegram_account:
+			self.telegram_bot = None
+
 	def after_insert(self):
 		self.update_chat_preview()
 		self.publish_to_console()
