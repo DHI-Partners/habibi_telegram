@@ -118,3 +118,18 @@ class TestЛичныйАккаунт(IntegrationTestCase):
 	def test_исходящее_с_телефона_ручное(self):
 		name, _ = account_store.log_message(self.account, self._message(302, out=True))
 		self.assertEqual(frappe.db.get_value("Telegram Message", name, "is_automated"), 0)
+
+	def test_automated_проставляется_на_уже_записанное(self):
+		# Слушатель записал исходящее раньше, чем отправитель успел его
+		# пометить, — пометка не должна потеряться
+		name, created = account_store.log_message(self.account, self._message(303, out=True))
+		self.assertTrue(created)
+		again, created = account_store.log_message(self.account, self._message(303, out=True), automated=True)
+		self.assertEqual(again, name)
+		self.assertFalse(created)
+		self.assertEqual(frappe.db.get_value("Telegram Message", name, "is_automated"), 1)
+
+	def test_повтор_без_automated_пометку_не_снимает(self):
+		name, _ = account_store.log_message(self.account, self._message(304, out=True), automated=True)
+		account_store.log_message(self.account, self._message(304, out=True))
+		self.assertEqual(frappe.db.get_value("Telegram Message", name, "is_automated"), 1)
