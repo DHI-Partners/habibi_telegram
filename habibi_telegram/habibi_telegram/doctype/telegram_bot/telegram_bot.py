@@ -1,6 +1,7 @@
 import urllib.parse
 
 import frappe
+import requests
 from frappe import _
 from frappe.model.document import Document
 
@@ -13,11 +14,48 @@ WEBHOOK_METHOD = "habibi_telegram.api.webhook"
 LOCAL_SUFFIXES = (".localhost", ".local", ".test", ".internal")
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1")
 
+# Сколько ждать собственный сайт перед регистрацией вебхука
+REACHABILITY_TIMEOUT = 10
+
 
 def _is_local(host: str) -> bool:
 	host = host.split(":", 1)[0].lower()
 
 	return host in LOCAL_HOSTS or host.endswith(LOCAL_SUFFIXES)
+
+
+def _ensure_reachable(webhook_url: str):
+	"""
+	Убедиться, что по адресу вебхука отвечает именно этот Frappe.
+
+	Telegram принимает любой https-адрес и молча шлёт туда апдейты, поэтому
+	ошибка в адресе видна только по тому, что бот не отвечает. Так и было
+	после переезда erp на новый домен: в host_name остался старый, прокси
+	отвечал на него 404, а вебхук регистрировался без единой жалобы.
+
+	Спрашиваем ping с того же домена: 200 и "pong" значат, что запрос дошёл
+	до бенча, а не до прокси или заглушки на чужом сервере.
+	"""
+	parts = urllib.parse.urlsplit(webhook_url)
+	base = f"{parts.scheme}://{parts.netloc}"
+	hint = _("Check host_name in site_config.json and the DNS record of the domain.")
+
+	try:
+		response = requests.get(f"{base}/api/method/ping", timeout=REACHABILITY_TIMEOUT)
+	except requests.RequestException as e:
+		frappe.throw(_("Site is not reachable at {0}: {1}. {2}").format(base, e, hint))
+
+	try:
+		pong = response.status_code == 200 and response.json().get("message") == "pong"
+	except ValueError:
+		pong = False
+
+	if not pong:
+		frappe.throw(
+			_("Site does not answer at {0} (HTTP {1}), Telegram would not reach the bot. {2}").format(
+				base, response.status_code, hint
+			)
+		)
 
 
 class TelegramBot(Document):
@@ -114,8 +152,9 @@ class TelegramBot(Document):
 			frappe.throw(_("Save the bot before registering its webhook"))
 
 		url = self.get_webhook_url()
+		_ensure_reachable(url)
 
-		secret = self.get_password("webhook_secret", raise_exception=False)
+		secret =self.get_password("webhook_secret", raise_exception=False)
 		if not secret:
 			secret = frappe.generate_hash(length=32)
 			self.webhook_secret = secret
