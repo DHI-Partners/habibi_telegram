@@ -33,9 +33,9 @@ def mark_alive(account: str):
 
 
 def is_alive(account: str) -> bool:
-	# use_local_cache=False — иначе в долгоживущем процессе (cron/scheduler)
-	# get_value один раз прочитает значение из redis и будет отдавать его же
-	# из frappe.local.cache и дальше, уже не заметив, что heartbeat протух
+	# use_local_cache=False — иначе если этот же процесс уже читал или писал
+	# этот ключ раньше (например, сам вызвал mark_alive), get_value вернёт то
+	# значение из frappe.local.cache и не заметит, что оно протухло в redis
 	return bool(frappe.cache().get_value(_heartbeat_key(account), use_local_cache=False))
 
 
@@ -90,13 +90,15 @@ def _accounts_to_listen(site: str) -> list[str]:
 
 
 def _listen_one(site: str, account: str):
-	frappe.init(site=site)
-	frappe.connect()
 	try:
+		frappe.init(site=site)
+		frappe.connect()
+
 		from habibi_telegram.user_client import listen
 
 		listen(account, forever=True, heartbeat=True)
 	except Exception:
+		frappe.db.rollback()
 		frappe.log_error(title=f"Telegram listener stopped ({account})", message=frappe.get_traceback())
 		frappe.db.commit()
 	finally:

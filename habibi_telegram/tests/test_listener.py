@@ -28,6 +28,14 @@ class TestHeartbeat(IntegrationTestCase):
 		frappe.db.commit()
 		frappe.cache().delete_value(listener._heartbeat_key(TITLE))
 
+	@classmethod
+	def tearDownClass(cls):
+		# Фиктивный Connected-аккаунт не должен оставаться в dev-базе — иначе
+		# его подхватит настоящий bench telegram listen-all
+		frappe.db.delete("Telegram Account", TITLE)
+		frappe.db.commit()
+		super().tearDownClass()
+
 	def test_без_слушателя_cron_синхронизирует(self):
 		with patch("frappe.enqueue") as enqueue:
 			user_client.sync_all_accounts()

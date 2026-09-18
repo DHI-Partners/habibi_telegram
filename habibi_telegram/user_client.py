@@ -757,6 +757,14 @@ def listen(account, forever: bool = True, seconds: int = None, heartbeat: bool =
 
 	stats = {"new": 0, "edited": 0, "deleted": 0}
 
+	if heartbeat:
+		from habibi_telegram import listener
+
+		# До catch-up, а не после: иначе на время sync_account (может идти
+		# минутами при большой истории) heartbeat ещё не виден, и cron успевает
+		# поставить в очередь sync_account этого же аккаунта — вторая сессия
+		listener.mark_alive(account.name)
+
 	# Пропущенное за время простоя добираем до подключения: события приходят
 	# только с момента, когда соединение уже открыто, а asyncio.run внутри
 	# работающего цикла не запустишь
@@ -787,17 +795,35 @@ def listen(account, forever: bool = True, seconds: int = None, heartbeat: bool =
 		if heartbeat:
 			import asyncio
 
-			from habibi_telegram import listener
-
 			async def _beat():
-				while True:
-					listener.mark_alive(account.name)
-					await asyncio.sleep(listener.HEARTBEAT_EVERY)
-					if not listener.should_listen(account.name):
-						await client.disconnect()
-						return
+				try:
+					while True:
+						listener.mark_alive(account.name)
+						await asyncio.sleep(listener.HEARTBEAT_EVERY)
+						if not listener.should_listen(account.name):
+							return
+				except Exception:
+					# Тихо погибшая задача (redis лёг, обвалилось соединение с
+					# БД) хуже открытого исключения: heartbeat перестанет
+					# обновляться, а соединение останется висеть, и через 90 с
+					# cron решит, что слушателя нет, и откроет второе той же
+					# сессией
+					frappe.db.rollback()
+					frappe.log_error(
+						title=f"Telegram heartbeat failed ({account.name})",
+						message=frappe.get_traceback(),
+					)
+					frappe.db.commit()
+				finally:
+					# Что бы ни завершило цикл — выключение аккаунта, ошибка —
+					# соединение закрываем сами: run_until_disconnected ждёт
+					# именно disconnect, а не какой-то из этих исходов
+					await client.disconnect()
 
-			asyncio.get_running_loop().create_task(_beat())
+			# Ссылку обязательно сохранить (в локальной переменной этой же
+			# корутины, живущей до конца _op): у event loop только слабая
+			# ссылка на task, и без другой он может пропасть на середине работы
+			heartbeat_task = asyncio.get_running_loop().create_task(_beat())  # noqa: F841
 
 		if forever:
 			await client.run_until_disconnected()
