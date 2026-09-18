@@ -180,6 +180,8 @@ def _save_identity(account, me):
 
 def sync_all_accounts():
 	"""Планировщик: раз в минуту разложить синхронизацию по фоновым задачам."""
+	from habibi_telegram import listener
+
 	accounts = frappe.get_all(
 		"Telegram Account",
 		filters={"enabled": 1, "sync_enabled": 1, "status": "Connected"},
@@ -187,6 +189,11 @@ def sync_all_accounts():
 	)
 
 	for name in accounts:
+		# Аккаунт держит слушатель — второе соединение той же сессией
+		# Telegram может счесть угоном и разорвать обе
+		if listener.is_alive(name):
+			continue
+
 		frappe.enqueue(
 			"habibi_telegram.user_client.sync_account",
 			queue="long",
@@ -732,13 +739,16 @@ async def _resolve(client, chat_id):
 # -- realtime ----------------------------------------------------------------
 
 
-def listen(account, forever: bool = True, seconds: int = None):
+def listen(account, forever: bool = True, seconds: int = None, heartbeat: bool = False):
 	"""
 	Слушать апдейты в открытом соединении — для `bench telegram listen`.
 
 	Обычной установке это не нужно: getDifference раз в минуту забирает то же
 	самое. Но если задержка в минуту неприемлема, процесс можно повесить в
 	supervisor и получать сообщения мгновенно.
+
+	heartbeat — для listen-all: отмечаться в redis, чтобы cron не открывал
+	второе соединение, и отключиться самому, когда аккаунт выключат на форме.
 	"""
 	account = get_account(account)
 	mtproto.require_telethon()
@@ -773,6 +783,21 @@ def listen(account, forever: bool = True, seconds: int = None):
 		async def _on_delete(event):
 			_in_transaction(store.mark_deleted, account, event.deleted_ids, event.chat_id)
 			stats["deleted"] += 1
+
+		if heartbeat:
+			import asyncio
+
+			from habibi_telegram import listener
+
+			async def _beat():
+				while True:
+					listener.mark_alive(account.name)
+					await asyncio.sleep(listener.HEARTBEAT_EVERY)
+					if not listener.should_listen(account.name):
+						await client.disconnect()
+						return
+
+			asyncio.get_running_loop().create_task(_beat())
 
 		if forever:
 			await client.run_until_disconnected()

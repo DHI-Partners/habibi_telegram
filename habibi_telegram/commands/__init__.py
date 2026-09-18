@@ -150,6 +150,23 @@ def listen(context, telegram_account):
 	frappe.destroy()
 
 
+@click.command("listen-all")
+def listen_all():
+	"""
+	Слушать все подключённые аккаунты всех сайтов бенча.
+
+	Для отдельного сервиса в compose: один процесс на бенч, аккаунты
+	подхватываются и отпускаются сами, раз в минуту.
+	"""
+	from habibi_telegram.listener import run_all
+
+	click.echo("Listening for all Telegram accounts. Ctrl-C to stop.")
+	try:
+		run_all()
+	except KeyboardInterrupt:
+		click.echo("Stopped")
+
+
 telegram.add_command(list_bots)
 telegram.add_command(set_webhook)
 telegram.add_command(remove_webhook)
@@ -157,5 +174,6 @@ telegram.add_command(webhook_info)
 telegram.add_command(list_accounts)
 telegram.add_command(sync_account)
 telegram.add_command(listen)
+telegram.add_command(listen_all)
 
 commands = [telegram]
