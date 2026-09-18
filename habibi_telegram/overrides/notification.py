@@ -58,6 +58,7 @@ def send_telegram_notification(notification, doc):
 			user=user,
 			from_bot=from_bot,
 			parse_mode=ParseMode.HTML,
+			automated=True,
 			enqueue_after_commit=True,
 		)
 
@@ -69,6 +70,7 @@ def send_telegram_notification(notification, doc):
 				filename=print_file.get("fname"),
 				user=user,
 				from_bot=from_bot,
+				automated=True,
 				enqueue_after_commit=True,
 			)
 

@@ -30,6 +30,7 @@ def send_message(
 	from_bot: str = None,
 	chat_id=None,
 	reply_markup=None,
+	automated: bool = False,
 ):
 	"""
 	Отправить сообщение пользователю Telegram.
@@ -40,6 +41,7 @@ def send_message(
 	telegram_user: имя документа Telegram User, если пользователь Frappe не нужен
 	from_bot:     имя Telegram Bot; по умолчанию — бот, помеченный как основной
 	chat_id:      отправить прямо в чат, минуя Telegram User (для групп)
+	automated:    отправил не человек (уведомление, ИИ) — пометка в истории
 	"""
 	message_text = sanitize_message_text(message_text, parse_mode)
 	if not message_text:
@@ -56,7 +58,7 @@ def send_message(
 		result = bot.send_message(
 			chat_id, text=chunk, parse_mode=parse_mode, reply_markup=reply_markup
 		)
-		log_outgoing_message(telegram_bot=from_bot, result=result)
+		log_outgoing_message(telegram_bot=from_bot, result=result, automated=automated)
 
 	return result
 
@@ -70,6 +72,7 @@ def send_file(
 	telegram_user: str = None,
 	from_bot: str = None,
 	chat_id=None,
+	automated: bool = False,
 ):
 	"""
 	Отправить файл.
@@ -77,6 +80,7 @@ def send_file(
 	file: документ File, внутренний путь (/files/x.pdf, /private/files/x.pdf),
 	      публичный URL, file_id Telegram, bytes или открытый файл
 	message: подпись к файлу, 0–1024 символа
+	automated: отправил не человек (уведомление, ИИ) — пометка в истории
 	"""
 	message = sanitize_message_text(message, parse_mode)
 
@@ -91,7 +95,7 @@ def send_file(
 	result = bot.send_document(
 		chat_id, document=file, filename=filename, caption=message, parse_mode=parse_mode
 	)
-	log_outgoing_message(telegram_bot=from_bot, result=result)
+	log_outgoing_message(telegram_bot=from_bot, result=result, automated=automated)
 
 	return result
 
@@ -105,6 +109,7 @@ def send_voice(
 	telegram_user: str = None,
 	from_bot: str = None,
 	chat_id=None,
+	automated: bool = False,
 ):
 	"""
 	Отправить голосовое сообщение.
@@ -112,6 +117,7 @@ def send_voice(
 	audio: содержимое записи (bytes) либо уже известный Telegram file_id.
 	Запись приводится к формату, который Telegram принимает голосовым, —
 	см. habibi_telegram.utils.audio.
+	automated: отправил не человек (уведомление, ИИ) — пометка в истории
 	"""
 	caption = sanitize_message_text(caption, parse_mode)
 
@@ -137,7 +143,7 @@ def send_voice(
 			duration=duration or voice.duration,
 		)
 
-	log_outgoing_message(telegram_bot=from_bot, result=result)
+	log_outgoing_message(telegram_bot=from_bot, result=result, automated=automated)
 
 	return result
 
@@ -344,8 +350,8 @@ def _resolve_file(file, filename: str = None):
 	return file, filename
 
 
-def log_outgoing_message(telegram_bot: str, result):
+def log_outgoing_message(telegram_bot: str, result, automated: bool = False):
 	"""Отложенный импорт — handlers.logging тянет doctype-слой."""
 	from habibi_telegram.handlers.logging import log_outgoing_message as _log
 
-	return _log(telegram_bot=telegram_bot, result=result)
+	return _log(telegram_bot=telegram_bot, result=result, automated=automated)

@@ -9,10 +9,12 @@
   "chat",
   "message_id",
   "direction",
+  "is_automated",
   "column_break_main",
   "from_user",
   "from_bot",
   "telegram_account",
+  "telegram_bot",
   "sent_on",
   "content_section",
   "content",
@@ -49,6 +51,14 @@
    "label": "Direction",
    "options": "Incoming\nOutgoing",
    "read_only": 1
+  },
+  {
+   "fieldname": "is_automated",
+   "fieldtype": "Check",
+   "label": "Is Automated",
+   "default": "0",
+   "read_only": 1,
+   "description": "Sent by automation (bot handlers, notifications, AI), not by a person"
   },
   {
    "fieldname": "column_break_main",
@@ -103,6 +113,15 @@
    "description": "Личный аккаунт, который увидел или отправил это сообщение"
   },
   {
+   "fieldname": "telegram_bot",
+   "fieldtype": "Link",
+   "label": "Telegram Bot",
+   "options": "Telegram Bot",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "Bot the message came through"
+  },
+  {
    "fieldname": "sent_on",
    "fieldtype": "Datetime",
    "label": "Sent On",
@@ -148,7 +167,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-06 18:40:00.000000",
+ "modified": "2026-09-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Habibi Telegram",
  "name": "Telegram Message",

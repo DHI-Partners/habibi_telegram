@@ -376,6 +376,7 @@ def entity_to_user(entity) -> dict | None:
 		"username": entity.username,
 		"first_name": entity.first_name,
 		"last_name": entity.last_name,
+		"is_bot": bool(getattr(entity, "bot", False)),
 	}
 
 

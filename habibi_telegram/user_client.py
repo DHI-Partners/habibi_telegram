@@ -476,11 +476,13 @@ def send_message(
 	reply_to=None,
 	file=None,
 	filename: str = None,
+	automated: bool = False,
 ) -> str | None:
 	"""
 	Написать от имени аккаунта. Возвращает имя записанного Telegram Message.
 
 	file — путь, bytes или file_id; тогда text уходит подписью.
+	automated — отправил не человек (ИИ, уведомление): пометка в истории.
 	"""
 	account = get_account(account)
 	mtproto.require_telethon()
@@ -518,7 +520,7 @@ def send_message(
 	except Exception as e:
 		frappe.throw(mtproto.describe_error(e), title=_("Telegram did not accept the message"))
 
-	return store.log_message(account, message, _entities_from([message]))[0]
+	return store.log_message(account, message, _entities_from([message]), automated=automated)[0]
 
 
 def send_voice(

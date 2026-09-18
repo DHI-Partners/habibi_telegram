@@ -4,10 +4,13 @@ Pre-processor: заводит Telegram User / Telegram Chat / Telegram Message �
 делать это самим.
 """
 
+from datetime import UTC, datetime
+
 import frappe
 
 from habibi_telegram.habibi_telegram.doctype.telegram_chat import telegram_chat as chat_store
 from habibi_telegram.habibi_telegram.doctype.telegram_user import telegram_user as user_store
+from habibi_telegram.mtproto import to_system_datetime
 from habibi_telegram.notifications import notify_new_message
 from habibi_telegram.utils import update as u
 
@@ -59,6 +62,8 @@ def log_incoming_message(context):
 		direction="Incoming",
 		media_type=media.get("type"),
 		media_file_id=media.get("file_id"),
+		telegram_bot=context.telegram_bot.name,
+		sent_on=_sent_on(message),
 	)
 	doc.insert(ignore_permissions=True)
 
@@ -67,8 +72,14 @@ def log_incoming_message(context):
 	return doc
 
 
-def log_outgoing_message(telegram_bot: str, result):
-	"""result — объект Message, который вернул sendMessage / sendDocument."""
+def log_outgoing_message(telegram_bot: str, result, automated: bool = False):
+	"""
+	result — объект Message, который вернул sendMessage / sendDocument.
+
+	automated — отправил не человек. Ответы обработчиков внутри process_update
+	автоматические всегда, поэтому флаг апдейта учитывается здесь, а не у
+	каждого вызывающего.
+	"""
 	if not isinstance(result, dict) or not result.get("message_id"):
 		return None
 
@@ -95,6 +106,9 @@ def log_outgoing_message(telegram_bot: str, result):
 		direction="Outgoing",
 		media_type=media.get("type"),
 		media_file_id=media.get("file_id"),
+		telegram_bot=telegram_bot,
+		sent_on=_sent_on(result),
+		is_automated=1 if (automated or frappe.flags.in_telegram_update) else 0,
 	)
 	doc.insert(ignore_permissions=True)
 
@@ -129,3 +143,14 @@ def media_info(message: dict) -> dict:
 		return {"type": field, "file_id": value.get("file_id"), "label": f"[{field}]"}
 
 	return {}
+
+
+def _sent_on(message: dict):
+	"""Дата сообщения Bot API (unix-время UTC) → дата сайта.
+
+	Без неё нельзя отличить свежее сообщение от доставленного с опозданием, а
+	отвечать на вчерашнее автоматике нельзя.
+	"""
+	if not message.get("date"):
+		return None
+	return to_system_datetime(datetime.fromtimestamp(message["date"], tz=UTC))

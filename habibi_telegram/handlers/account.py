@@ -34,7 +34,7 @@ MEDIA_LABELS = {
 
 
 def log_message(
-	account, message, entities: dict = None, notify: bool = True
+	account, message, entities: dict = None, notify: bool = True, automated: bool = False
 ) -> tuple[str | None, bool]:
 	"""
 	Записать сообщение аккаунта.
@@ -45,6 +45,7 @@ def log_message(
 	message — объект Message или MessageService из Telethon,
 	entities — индекс сущностей из того же ответа (см. mtproto.index_entities),
 	notify — оповещать ли в колокольчике; на разборе старой истории выключается.
+	automated — отправил не человек (передаёт тот, кто отправлял через user_client).
 	"""
 	entities = entities or {}
 
@@ -83,6 +84,7 @@ def log_message(
 		# file_id здесь не бывает: в MTProto вложение живёт только вместе со
 		# своим сообщением, и качается оно по номеру сообщения
 		media_type=media_kind(message),
+		is_automated=1 if automated else 0,
 	)
 	doc.insert(ignore_permissions=True)
 

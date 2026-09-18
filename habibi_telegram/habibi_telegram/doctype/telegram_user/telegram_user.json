@@ -13,6 +13,7 @@
   "column_break_main",
   "user",
   "is_guest",
+  "is_bot",
   "conversation_section",
   "conversation_state"
  ],
@@ -57,6 +58,13 @@
    "label": "Is Guest"
   },
   {
+   "fieldname": "is_bot",
+   "fieldtype": "Check",
+   "label": "Is Bot",
+   "default": "0",
+   "read_only": 1
+  },
+  {
    "collapsible": 1,
    "fieldname": "conversation_section",
    "fieldtype": "Section Break",
@@ -73,7 +81,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-05 12:00:00.000000",
+ "modified": "2026-09-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Habibi Telegram",
  "name": "Telegram User",

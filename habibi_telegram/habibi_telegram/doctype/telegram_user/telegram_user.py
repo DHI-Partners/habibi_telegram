@@ -50,6 +50,10 @@ def get_or_create(telegram_user: dict) -> TelegramUser:
 
 	name = frappe.db.get_value("Telegram User", {"telegram_user_id": telegram_user["id"]})
 	if name:
+		# Флаг ставим и тем, кого завели до появления поля: бот ботом и
+		# остаётся, а без флага автоматика отвечала бы ему в ответ
+		if telegram_user.get("is_bot") and not frappe.db.get_value("Telegram User", name, "is_bot"):
+			frappe.db.set_value("Telegram User", name, "is_bot", 1, update_modified=False)
 		return frappe.get_doc("Telegram User", name)
 
 	full_name = " ".join(
@@ -61,6 +65,7 @@ def get_or_create(telegram_user: dict) -> TelegramUser:
 		telegram_user_id=str(telegram_user["id"]),
 		telegram_username=telegram_user.get("username"),
 		full_name=full_name.strip() or str(telegram_user["id"]),
+		is_bot=1 if telegram_user.get("is_bot") else 0,
 	)
 	doc.insert(ignore_permissions=True)
 
