@@ -39,10 +39,12 @@ def get_or_create(
 		return None
 
 	chat_id = str(chat["id"])
+	# У человека название — его имя в Telegram; алиас лишь запасной вариант, когда
+	# имя скрыто или стёрто. Названия групп и каналов приходят готовыми.
 	title = (
 		chat.get("title")
-		or chat.get("username")
 		or " ".join(x for x in (chat.get("first_name"), chat.get("last_name")) if x)
+		or chat.get("username")
 		or chat_id
 	)
 
