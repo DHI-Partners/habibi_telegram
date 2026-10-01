@@ -718,6 +718,45 @@ def delete_messages(account, chat_id, message_ids, revoke: bool = True) -> int:
 	return store.mark_deleted(account, ids, chat_id=chat_id)
 
 
+HISTORY_LIMIT = 5000  # больше этого за один раз не перечисляем: запрос идёт в браузере
+
+
+def clear_history(account, chat_id, revoke: bool = True) -> dict:
+	"""
+	Стереть историю чата в Telegram по тому, что реально лежит в Telegram.
+
+	Идти по нашей базе нельзя: после её чистки старые сообщения известны только
+	самому Telegram, и «удалить в Telegram» стёрло бы почти ничего. Поэтому
+	перечисляем историю у Telegram, удаляем пачками (revoke — у всех участников) и
+	проверяем, что осталось: Telegram не даёт стереть чужие сообщения в группах без
+	прав администратора, и об этом надо сказать честно, а не рапортовать успех.
+
+	Возвращает {"found": сколько было, "left": сколько осталось после удаления}.
+	"""
+	account = get_account(account)
+	mtproto.require_telethon()
+
+	async def _op(client):
+		entity = await _resolve(client, chat_id)
+		ids = [m.id async for m in client.iter_messages(entity, limit=HISTORY_LIMIT)]
+		for start in range(0, len(ids), DELETE_BATCH):
+			await client.delete_messages(entity, ids[start : start + DELETE_BATCH], revoke=bool(revoke))
+		left = 0
+		if ids:
+			async for _m in client.iter_messages(entity, limit=HISTORY_LIMIT):
+				left += 1
+		return ids, left
+
+	try:
+		ids, left = mtproto.call(account, _op)
+	except Exception as e:
+		frappe.throw(mtproto.describe_error(e), title=_("Telegram did not accept the deletion"))
+
+	if ids:
+		store.mark_deleted(account, ids, chat_id=chat_id)
+	return {"found": len(ids), "left": left}
+
+
 def fetch_dialogs(account, limit: int = None) -> list:
 	"""Перечитать список диалогов: чаты заводятся, названия обновляются."""
 	account = get_account(account)
