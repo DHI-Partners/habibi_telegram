@@ -688,6 +688,36 @@ def delete_message(account, chat_id, message_id, revoke: bool = True) -> int:
 	return store.mark_deleted(account, [message_id], chat_id=chat_id)
 
 
+DELETE_BATCH = 100  # столько id Telegram принимает за одно удаление
+
+
+def delete_messages(account, chat_id, message_ids, revoke: bool = True) -> int:
+	"""
+	Удалить много сообщений чата пачками. revoke=True — у всех участников.
+
+	Возвращает, сколько сообщений пометили удалёнными в журнале. Telegram не даёт
+	стереть чужие сообщения в групповых чатах без прав администратора и у собеседника
+	в личных чатах — только если revoke разрешён; ошибка Telegram пробрасывается как есть.
+	"""
+	ids = [cint(i) for i in message_ids]
+	if not ids:
+		return 0
+	account = get_account(account)
+	mtproto.require_telethon()
+
+	async def _op(client):
+		entity = await _resolve(client, chat_id)
+		for start in range(0, len(ids), DELETE_BATCH):
+			await client.delete_messages(entity, ids[start : start + DELETE_BATCH], revoke=bool(revoke))
+
+	try:
+		mtproto.call(account, _op)
+	except Exception as e:
+		frappe.throw(mtproto.describe_error(e), title=_("Telegram did not accept the deletion"))
+
+	return store.mark_deleted(account, ids, chat_id=chat_id)
+
+
 def fetch_dialogs(account, limit: int = None) -> list:
 	"""Перечитать список диалогов: чаты заводятся, названия обновляются."""
 	account = get_account(account)
