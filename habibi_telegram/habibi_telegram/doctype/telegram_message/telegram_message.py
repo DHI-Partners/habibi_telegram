@@ -41,6 +41,20 @@ class TelegramMessage(Document):
 		)
 
 	def update_chat_preview(self):
+		"""Превью чата (время и текст последнего сообщения) — вторично по отношению к самому сообщению.
+
+		Строку Telegram Chat может успеть изменить параллельный процесс (слушатель,
+		ответ ИИ), пока эта транзакция держит старый снимок: MariaDB отвечает 1020
+		«Record has changed since last read». Если ронять из-за этого вставку, ответ
+		клиенту уже ушёл, а в журнале его нет — кабинет считает отправку неудавшейся,
+		оператор жмёт снова, и клиент получает дубли. Поэтому сбой превью не
+		пробрасываем, а дописываем превью после коммита, в новой транзакции."""
+		try:
+			self._write_chat_preview()
+		except frappe.QueryDeadlockError:
+			frappe.db.after_commit.add(self._write_chat_preview_after_commit)
+
+	def _write_chat_preview(self):
 		frappe.db.set_value(
 			"Telegram Chat",
 			self.chat,
@@ -50,6 +64,14 @@ class TelegramMessage(Document):
 			},
 			update_modified=False,
 		)
+
+	def _write_chat_preview_after_commit(self):
+		try:
+			self._write_chat_preview()
+			frappe.db.commit()
+		except Exception:
+			# Превью устареет до следующего сообщения; на сам коммит это не влияет
+			frappe.log_error(title="Telegram: превью чата не обновлено", message=frappe.get_traceback())
 
 	def mark_as_password(self):
 		"""
