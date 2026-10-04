@@ -139,6 +139,9 @@ def load_session(account):
 	return _session_class()(string=string, cache=cache)
 
 
+SESSION_SAVE_ATTEMPTS = 3
+
+
 def store_session(account, session):
 	"""
 	Сложить сессию обратно в документ.
@@ -157,17 +160,26 @@ def store_session(account, session):
 		# если логин оборвался на середине
 		string = ""
 
-	set_encrypted_password(account.doctype, account.name, string or "", "session_string")
-	frappe.db.set_value(
-		account.doctype,
-		account.name,
-		{
-			# В самой таблице лежит заглушка: значение живёт в __Auth
-			"session_string": "*" * 10 if string else "",
-			"session_cache": json.dumps(session.dump_cache(), separators=(",", ":")),
-		},
-		update_modified=False,
-	)
+	values = {
+		# В самой таблице лежит заглушка: значение живёт в __Auth
+		"session_string": "*" * 10 if string else "",
+		"session_cache": json.dumps(session.dump_cache(), separators=(",", ":")),
+	}
+
+	# Строку аккаунта одновременно пишет слушатель: MariaDB отвечает 1020. Повторяем
+	# с чистой транзакции, а если не вышло — не роняем вызывающего: сообщение уже
+	# отправлено, и «неудача» из-за кэша сессии привела бы к дублям.
+	for attempt in range(SESSION_SAVE_ATTEMPTS):
+		# Откат только своей части: запись журнала отправленного сообщения остаётся
+		frappe.db.savepoint("store_session")
+		try:
+			set_encrypted_password(account.doctype, account.name, string or "", "session_string")
+			frappe.db.set_value(account.doctype, account.name, values, update_modified=False)
+			return
+		except frappe.QueryDeadlockError:
+			frappe.db.rollback(save_point="store_session")
+			if attempt == SESSION_SAVE_ATTEMPTS - 1:
+				frappe.log_error(title=_("Не удалось сохранить сессию Telegram-аккаунта"))
 
 
 def clear_session(account):
