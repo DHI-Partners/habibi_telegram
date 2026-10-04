@@ -797,6 +797,15 @@ async def _resolve(client, chat_id):
 	try:
 		return await client.get_entity(cint(chat_id))
 	except (ValueError, TypeError):
+		pass
+
+	# Новый собеседник написал слушателю, а в сохранённую сессию отправителя
+	# ещё не попал. Список диалогов приносит его вместе с access_hash —
+	# перечитываем и пробуем снова, чтобы ответ клиенту не терялся.
+	await client.get_dialogs(limit=DEFAULT_DIALOG_LIMIT)
+	try:
+		return await client.get_entity(cint(chat_id))
+	except (ValueError, TypeError):
 		frappe.throw(
 			_(
 				"This account does not know chat {0} yet. Press 'Sync Now' on the account "
